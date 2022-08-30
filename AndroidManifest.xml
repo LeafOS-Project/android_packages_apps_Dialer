@@ -114,7 +114,7 @@
         android:appCategory="social"
         android:extractNativeLibs="false"
         android:hardwareAccelerated="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_launcher_phone"
         android:label="@string/applicationLabel"
         android:supportsRtl="true"
         android:usesCleartextTraffic="false">
