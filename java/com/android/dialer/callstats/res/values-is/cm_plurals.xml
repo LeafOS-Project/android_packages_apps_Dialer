@@ -16,27 +16,19 @@
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <plurals name="hour">
-        <item quantity="one">1 гадзіна</item>
-        <item quantity="few">%d гадзіны</item>
-        <item quantity="many">%d гадзін</item>
-        <item quantity="other">%d гадзіны</item>
+        <item quantity="one">1 klst</item>
+        <item quantity="other">%d klst</item>
     </plurals>
     <plurals name="minute">
-        <item quantity="one">1 хвіліна</item>
-        <item quantity="few">%d хвіліны</item>
-        <item quantity="many">%d хвілін</item>
-        <item quantity="other">%d хвіліны</item>
+        <item quantity="one">1 mín</item>
+        <item quantity="other">%d mín</item>
     </plurals>
     <plurals name="second">
-        <item quantity="one">1 секунда</item>
-        <item quantity="few">%d секунды</item>
-        <item quantity="many">%d секунд</item>
-        <item quantity="other">%d секунды</item>
+        <item quantity="one">1 sek</item>
+        <item quantity="other">%d sek</item>
     </plurals>
     <plurals name="call">
-        <item quantity="one">1 выклік</item>
-        <item quantity="few">%d выклікі</item>
-        <item quantity="many">%d выклікаў</item>
-        <item quantity="other">%d выклікі</item>
+        <item quantity="one">1 símtal</item>
+        <item quantity="other">%d símtöl</item>
     </plurals>
 </resources>
