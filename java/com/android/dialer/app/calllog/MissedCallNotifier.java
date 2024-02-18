@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +18,9 @@ package com.android.dialer.app.calllog;
 
 import static com.android.dialer.app.DevicePolicyResources.NOTIFICATION_MISSED_WORK_CALL_TITLE;
 
+import android.annotation.SuppressLint;
 import android.app.BroadcastOptions;
 import android.app.Notification;
-import android.app.Notification.Builder;
 import android.app.PendingIntent;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
@@ -31,8 +32,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CallLog.Calls;
 import android.service.notification.StatusBarNotification;
-import android.support.v4.os.UserManagerCompat;
-import android.support.v4.util.Pair;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
@@ -45,10 +44,12 @@ import android.util.ArraySet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
+import androidx.core.os.UserManagerCompat;
+import androidx.core.util.Pair;
 
 import com.android.contacts.common.ContactsUtils;
+import com.android.dialer.R;
 import com.android.dialer.app.MainComponent;
-import com.android.dialer.app.R;
 import com.android.dialer.app.calllog.CallLogNotificationsQueryHelper.NewCall;
 import com.android.dialer.app.contactinfo.ContactPhotoLoader;
 import com.android.dialer.callintent.CallInitiationType;
@@ -367,7 +368,7 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
   }
 
   private Notification.Builder createNotificationBuilder() {
-    return new Notification.Builder(context)
+    return new Notification.Builder(context, NotificationChannelId.MISSED_CALL)
         .setGroup(MissedCallConstants.GROUP_KEY)
         .setSmallIcon(android.R.drawable.stat_notify_missed_call)
         .setColor(ThemeComponent.get(context).theme().getColorPrimary())
@@ -378,7 +379,7 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
   }
 
   private Notification.Builder createNotificationBuilder(@NonNull NewCall call) {
-    Builder builder =
+    Notification.Builder builder =
         createNotificationBuilder()
             .setWhen(call.dateMs)
             .setDeleteIntent(
@@ -433,7 +434,8 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
 
     // TODO (a bug): scroll to call
     contentIntent.setData(callUri);
-    return PendingIntent.getActivity(context, 0, contentIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+    return PendingIntent.getActivity(context, 0, contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
   }
 
   private PendingIntent createCallBackPendingIntent(String number, @NonNull Uri callUri) {
@@ -443,7 +445,8 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
     intent.setData(callUri);
     // Use FLAG_UPDATE_CURRENT to make sure any previous pending intent is updated with the new
     // extra.
-    return PendingIntent.getService(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    return PendingIntent.getService(context, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
   }
 
   private PendingIntent createSendSmsFromNotificationPendingIntent(
@@ -454,7 +457,8 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
     intent.setData(callUri);
     // Use FLAG_UPDATE_CURRENT to make sure any previous pending intent is updated with the new
     // extra.
-    return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    return PendingIntent.getActivity(context, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
   }
 
   /** Configures a notification to emit the blinky notification light. */
@@ -464,6 +468,7 @@ public class MissedCallNotifier implements Worker<Pair<Integer, String>, Void> {
   }
 
   /** Closes open system dialogs and the notification shade. */
+  @SuppressLint("MissingPermission")
   private void closeSystemDialogs(Context context) {
     final Intent intent = new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
             .addFlags(Intent.FLAG_RECEIVER_FOREGROUND);

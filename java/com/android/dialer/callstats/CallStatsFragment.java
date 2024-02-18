@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
  * Copyright (C) 2013 Android Open Kang Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,21 +18,18 @@
 
 package com.android.dialer.callstats;
 
-import android.app.Fragment;
+import static android.Manifest.permission.READ_CALL_LOG;
+
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.LinearLayoutManager;
 import android.telecom.PhoneAccountHandle;
 import android.text.format.DateUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -39,6 +37,12 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.dialer.R;
 import com.android.dialer.app.contactinfo.ExpirableCacheHeadlessFragment;
@@ -50,15 +54,11 @@ import com.android.dialer.widget.EmptyContentView;
 
 import java.util.Map;
 
-import static android.Manifest.permission.READ_CALL_LOG;
-
 public class CallStatsFragment extends Fragment implements
     CallStatsQueryHandler.Listener, FilterSpinnerHelper.OnFilterChangedListener,
     EmptyContentView.OnEmptyViewActionButtonClickedListener,
     DoubleDatePickerDialog.OnDateSetListener {
   private static final String TAG = "CallStatsFragment";
-
-  private static final int READ_CALL_LOG_PERMISSION_REQUEST_CODE = 1;
 
   private PhoneAccountHandle mAccountFilter = null;
   private int mCallTypeFilter = -1;
@@ -69,10 +69,8 @@ public class CallStatsFragment extends Fragment implements
 
   private RecyclerView mRecyclerView;
   private EmptyContentView mEmptyListView;
-  private LinearLayoutManager mLayoutManager;
   private CallStatsAdapter mAdapter;
   private CallStatsQueryHandler mCallStatsQueryHandler;
-  private FilterSpinnerHelper mFilterHelper;
 
   private TextView mSumHeaderView;
   private TextView mDateFilterView;
@@ -80,18 +78,29 @@ public class CallStatsFragment extends Fragment implements
   private boolean mHasReadCallLogPermission = false;
 
   private boolean mRefreshDataRequired = true;
-  private final ContentObserver mObserver = new ContentObserver(new Handler()) {
+  private final ContentObserver mObserver = new ContentObserver(
+          new Handler(Looper.getMainLooper())) {
     @Override
     public void onChange(boolean selfChange) {
       mRefreshDataRequired = true;
     }
   };
 
+  private final ActivityResultLauncher<String> permissionLauncher = registerForActivityResult(
+          new ActivityResultContracts.RequestPermission(),
+          granted -> {
+            if (granted) {
+              // Force a refresh of the data since we were missing the permission before this.
+              mRefreshDataRequired = true;
+              requireActivity().invalidateOptionsMenu();
+            }
+          });
+
   @Override
   public void onCreate(Bundle state) {
     super.onCreate(state);
 
-    final ContentResolver cr = getActivity().getContentResolver();
+    final ContentResolver cr = requireActivity().getContentResolver();
     mCallStatsQueryHandler = new CallStatsQueryHandler(cr, this);
     cr.registerContentObserver(CallLog.CONTENT_URI, true, mObserver);
     cr.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, mObserver);
@@ -99,9 +108,9 @@ public class CallStatsFragment extends Fragment implements
     setHasOptionsMenu(true);
 
     ExpirableCacheHeadlessFragment cacheFragment =
-        ExpirableCacheHeadlessFragment.attach((AppCompatActivity) getActivity());
+        ExpirableCacheHeadlessFragment.attach(getChildFragmentManager());
     mAdapter = new CallStatsAdapter(getActivity(),
-        ContactsComponent.get(getActivity()).contactDisplayPreferences(),
+        ContactsComponent.get(requireActivity()).contactDisplayPreferences(),
         cacheFragment.getRetainedCache());
   }
 
@@ -109,16 +118,16 @@ public class CallStatsFragment extends Fragment implements
   public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedState) {
     View view = inflater.inflate(R.layout.call_stats_fragment, container, false);
 
-    mRecyclerView = (RecyclerView) view.findViewById(R.id.recycler_view);
+    mRecyclerView = view.findViewById(R.id.recycler_view);
     mRecyclerView.setHasFixedSize(true);
-    mLayoutManager = new LinearLayoutManager(getActivity());
-    mRecyclerView.setLayoutManager(mLayoutManager);
-    mEmptyListView = (EmptyContentView) view.findViewById(R.id.empty_list_view);
+    LinearLayoutManager layoutManager = new LinearLayoutManager(getActivity());
+    mRecyclerView.setLayoutManager(layoutManager);
+    mEmptyListView = view.findViewById(R.id.empty_list_view);
     mEmptyListView.setImage(R.drawable.empty_call_log);
     mEmptyListView.setActionClickedListener(this);
 
-    mSumHeaderView = (TextView) view.findViewById(R.id.sum_header);
-    mDateFilterView = (TextView) view.findViewById(R.id.date_filter);
+    mSumHeaderView = view.findViewById(R.id.sum_header);
+    mDateFilterView = view.findViewById(R.id.date_filter);
 
     return view;
   }
@@ -127,7 +136,6 @@ public class CallStatsFragment extends Fragment implements
   public void onViewCreated(View view, Bundle savedInstanceState) {
     super.onViewCreated(view, savedInstanceState);
     mRecyclerView.setAdapter(mAdapter);
-    mFilterHelper = new FilterSpinnerHelper(view, false, this);
     updateEmptyVisibilityAndMessage();
   }
 
@@ -151,30 +159,22 @@ public class CallStatsFragment extends Fragment implements
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     final int itemId = item.getItemId();
-    switch (itemId) {
-      case R.id.date_filter: {
-        final DoubleDatePickerDialog.Fragment fragment =
-            new DoubleDatePickerDialog.Fragment();
-        fragment.setArguments(
-            DoubleDatePickerDialog.Fragment.createArguments(mFilterFrom, mFilterTo));
-        fragment.show(getFragmentManager(), "filter");
-        break;
-      }
-      case R.id.reset_date_filter: {
-        mFilterFrom = -1;
-        mFilterTo = -1;
-        fetchCalls();
-        updateEmptyVisibilityAndMessage();
-        getActivity().invalidateOptionsMenu();
-        break;
-      }
-      case R.id.sort_by_duration:
-      case R.id.sort_by_count: {
-        mSortByDuration = itemId == R.id.sort_by_duration;
-        mAdapter.updateDisplayedData(mCallTypeFilter, mSortByDuration);
-        getActivity().invalidateOptionsMenu();
-        break;
-      }
+    if (itemId == R.id.date_filter) {
+      final DoubleDatePickerDialog.Fragment fragment =
+              new DoubleDatePickerDialog.Fragment();
+      fragment.setArguments(
+              DoubleDatePickerDialog.Fragment.createArguments(mFilterFrom, mFilterTo));
+      fragment.show(getParentFragmentManager(), "filter");
+    } else if (itemId == R.id.reset_date_filter) {
+      mFilterFrom = -1;
+      mFilterTo = -1;
+      fetchCalls();
+      updateEmptyVisibilityAndMessage();
+      requireActivity().invalidateOptionsMenu();
+    } else if (itemId == R.id.sort_by_duration || itemId == R.id.sort_by_count) {
+      mSortByDuration = itemId == R.id.sort_by_duration;
+      mAdapter.updateDisplayedData(mCallTypeFilter, mSortByDuration);
+      requireActivity().invalidateOptionsMenu();
     }
     return true;
   }
@@ -198,20 +198,7 @@ public class CallStatsFragment extends Fragment implements
   @Override
   public void onEmptyViewActionButtonClicked() {
     if (!PermissionsUtil.hasPermission(getActivity(), READ_CALL_LOG)) {
-      requestPermissions(new String[] { READ_CALL_LOG },
-          READ_CALL_LOG_PERMISSION_REQUEST_CODE);
-    }
-  }
-
-  @Override
-  public void onRequestPermissionsResult(int requestCode, String[] permissions,
-      int[] grantResults) {
-    if (requestCode == READ_CALL_LOG_PERMISSION_REQUEST_CODE) {
-      if (grantResults.length >= 1 && PackageManager.PERMISSION_GRANTED == grantResults[0]) {
-        // Force a refresh of the data since we were missing the permission before this.
-        mRefreshDataRequired = true;
-        getActivity().invalidateOptionsMenu();
-      }
+      permissionLauncher.launch(READ_CALL_LOG);
     }
   }
 
@@ -219,7 +206,7 @@ public class CallStatsFragment extends Fragment implements
   public void onDateSet(long from, long to) {
     mFilterFrom = from;
     mFilterTo = to;
-    getActivity().invalidateOptionsMenu();
+    requireActivity().invalidateOptionsMenu();
     fetchCalls();
     updateEmptyVisibilityAndMessage();
   }

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019-2021 The LineageOS Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +17,6 @@
 package com.android.dialer.helplines;
 
 import android.content.res.Resources;
-import android.support.v7.util.DiffUtil;
-import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,6 +25,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.dialer.R;
 import com.android.dialer.helplines.utils.HelplineUtils;
@@ -35,9 +36,9 @@ import java.util.List;
 
 class HelplineAdapter extends RecyclerView.Adapter<HelplineAdapter.ViewHolder> {
 
-    private Resources mResources;
+    private final Resources mResources;
     private List<HelplineItem> mList = new ArrayList<>();
-    private Listener mListener;
+    private final Listener mListener;
 
     HelplineAdapter(Resources resources, Listener listener) {
         mResources = resources;
@@ -74,8 +75,8 @@ class HelplineAdapter extends RecyclerView.Adapter<HelplineAdapter.ViewHolder> {
     }
 
     private static class Callback extends DiffUtil.Callback {
-        List<HelplineItem> mOldList;
-        List<HelplineItem> mNewList;
+        final List<HelplineItem> mOldList;
+        final List<HelplineItem> mNewList;
 
         public Callback(List<HelplineItem> oldList,
                         List<HelplineItem> newList) {
@@ -124,9 +125,7 @@ class HelplineAdapter extends RecyclerView.Adapter<HelplineAdapter.ViewHolder> {
         }
 
         void bind(HelplineItem item) {
-            mItemView.setOnClickListener(v -> {
-                mListener.onItemClicked(item);
-            });
+            mItemView.setOnClickListener(v -> mListener.onItemClicked(item));
 
             String name = item.getName();
             if (!TextUtils.isEmpty(name)) {
@@ -150,9 +149,7 @@ class HelplineAdapter extends RecyclerView.Adapter<HelplineAdapter.ViewHolder> {
             String number = item.getItem().getNumber();
             if (!TextUtils.isEmpty(number)) {
                 mCallIcon.setVisibility(View.VISIBLE);
-                mCallIcon.setOnClickListener(v -> {
-                    mListener.initiateCall(number);
-                });
+                mCallIcon.setOnClickListener(v -> mListener.initiateCall(number));
             }
         }
     }

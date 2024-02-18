@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@ import android.content.pm.Signature;
 import androidx.annotation.Nullable;
 
 import com.android.dialer.common.LogUtil;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -241,7 +243,8 @@ final class CequintPackageUtils {
     }
 
     ProviderInfo providerInfo =
-        packageManager.resolveContentProvider(authority, PackageManager.GET_META_DATA);
+        packageManager.resolveContentProvider(authority,
+                PackageManager.ComponentInfoFlags.of(PackageManager.GET_META_DATA));
     if (providerInfo == null) {
       LogUtil.d(
           "CequintPackageUtils.isCallerIdInstalled",
@@ -262,9 +265,10 @@ final class CequintPackageUtils {
 
     try {
       PackageInfo packageInfo =
-          packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+          packageManager.getPackageInfo(packageName,
+                  PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES));
 
-      Signature[] signatures = packageInfo.signatures;
+      Signature[] signatures = packageInfo.signingInfo.getSigningCertificateHistory();
       if (signatures.length > 1) {
         LogUtil.w(
             "CequintPackageUtils.isCallerIdInstalled", "package has more than one signature.");

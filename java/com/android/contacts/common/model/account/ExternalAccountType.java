@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,14 +31,17 @@ import android.provider.ContactsContract.CommonDataKinds.StructuredName;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Xml;
+
 import com.android.contacts.common.model.dataitem.DataKind;
+import com.android.dialer.R;
 import com.android.dialer.common.LogUtil;
-import com.android.dialer.contacts.resources.R;
+
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
 
 /** A general contacts account type descriptor. */
 public class ExternalAccountType extends BaseAccountType {
@@ -151,7 +155,7 @@ public class ExternalAccountType extends BaseAccountType {
       }
     }
 
-    mExtensionPackageNames = new ArrayList<String>();
+    mExtensionPackageNames = new ArrayList<>();
     mInviteActionLabelResId =
         resolveExternalResId(
             context,
@@ -189,25 +193,23 @@ public class ExternalAccountType extends BaseAccountType {
   public static XmlResourceParser loadContactsXml(Context context, String resPackageName) {
     final PackageManager pm = context.getPackageManager();
     final Intent intent = new Intent(SYNC_META_DATA).setPackage(resPackageName);
-    final List<ResolveInfo> intentServices =
-        pm.queryIntentServices(intent, PackageManager.GET_SERVICES | PackageManager.GET_META_DATA);
+    final List<ResolveInfo> intentServices = pm.queryIntentServices(intent,
+            PackageManager.ResolveInfoFlags.of(PackageManager.GET_META_DATA));
 
-    if (intentServices != null) {
-      for (final ResolveInfo resolveInfo : intentServices) {
-        final ServiceInfo serviceInfo = resolveInfo.serviceInfo;
-        if (serviceInfo == null) {
-          continue;
-        }
-        for (String metadataName : METADATA_CONTACTS_NAMES) {
-          final XmlResourceParser parser = serviceInfo.loadXmlMetaData(pm, metadataName);
-          if (parser != null) {
-            LogUtil.d(
-                TAG,
-                String.format(
-                    "Metadata loaded from: %s, %s, %s",
-                    serviceInfo.packageName, serviceInfo.name, metadataName));
-            return parser;
-          }
+    for (final ResolveInfo resolveInfo : intentServices) {
+      final ServiceInfo serviceInfo = resolveInfo.serviceInfo;
+      if (serviceInfo == null) {
+        continue;
+      }
+      for (String metadataName : METADATA_CONTACTS_NAMES) {
+        final XmlResourceParser parser = serviceInfo.loadXmlMetaData(pm, metadataName);
+        if (parser != null) {
+          LogUtil.d(
+              TAG,
+              String.format(
+                  "Metadata loaded from: %s, %s, %s",
+                  serviceInfo.packageName, serviceInfo.name, metadataName));
+          return parser;
         }
       }
     }
@@ -401,9 +403,7 @@ public class ExternalAccountType extends BaseAccountType {
           addKind(kind);
         }
       }
-    } catch (XmlPullParserException e) {
-      throw new DefinitionException("Problem reading XML", e);
-    } catch (IOException e) {
+    } catch (XmlPullParserException | IOException e) {
       throw new DefinitionException("Problem reading XML", e);
     }
   }

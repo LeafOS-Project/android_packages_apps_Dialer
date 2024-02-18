@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Xiao-Long Chen <chillermillerlong@hotmail.com>
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
@@ -33,7 +35,6 @@ import com.android.incallui.bindings.PhoneNumberService;
 import java.io.IOException;
 
 public class ReverseLookupService implements PhoneNumberService, Handler.Callback {
-  private final HandlerThread backgroundThread;
   private final Handler backgroundHandler;
   private final Handler handler;
   private final Context context;
@@ -47,11 +48,11 @@ public class ReverseLookupService implements PhoneNumberService, Handler.Callbac
     telephonyManager = context.getSystemService(TelephonyManager.class);
 
     // TODO: stop after a while?
-    backgroundThread = new HandlerThread("ReverseLookup");
+    HandlerThread backgroundThread = new HandlerThread("ReverseLookup");
     backgroundThread.start();
 
     backgroundHandler = new Handler(backgroundThread.getLooper(), this);
-    handler = new Handler(this);
+    handler = new Handler(Looper.getMainLooper(), this);
   }
 
   @Override

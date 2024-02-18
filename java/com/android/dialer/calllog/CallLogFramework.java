@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +17,18 @@
 
 package com.android.dialer.calllog;
 
-import android.content.Context;
-import android.content.Intent;
-import android.support.v4.content.LocalBroadcastManager;
 import com.android.dialer.calllog.datasources.CallLogDataSource;
 import com.android.dialer.calllog.datasources.DataSources;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.common.concurrent.Annotations.Ui;
-import com.android.dialer.inject.ApplicationContext;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -41,7 +40,6 @@ import javax.inject.Singleton;
 @Singleton
 public final class CallLogFramework {
 
-  private final Context appContext;
   private final DataSources dataSources;
   private final AnnotatedCallLogMigrator annotatedCallLogMigrator;
   private final ListeningExecutorService uiExecutor;
@@ -49,12 +47,10 @@ public final class CallLogFramework {
 
   @Inject
   CallLogFramework(
-      @ApplicationContext Context appContext,
       DataSources dataSources,
       AnnotatedCallLogMigrator annotatedCallLogMigrator,
       @Ui ListeningExecutorService uiExecutor,
       CallLogState callLogState) {
-    this.appContext = appContext;
     this.dataSources = dataSources;
     this.annotatedCallLogMigrator = annotatedCallLogMigrator;
     this.uiExecutor = uiExecutor;

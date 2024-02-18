@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +38,7 @@ import com.android.dialer.R;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.util.PermissionsUtil;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -225,7 +227,7 @@ import java.util.Set;
     if (!PermissionsUtil.hasReadPhoneStatePermissions(context)) {
       return true;
     }
-    return context.getSystemService(TelephonyManager.class).getPhoneCount() <= 1;
+    return context.getSystemService(TelephonyManager.class).getActiveModemCount() <= 1;
   }
 
   private VoicemailChannelUtils() {}

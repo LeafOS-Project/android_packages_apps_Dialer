@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 The CyanogenMod Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,14 +26,13 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.RemoteException;
-import android.os.SystemProperties;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
 import com.android.dialer.R;
-import com.android.dialer.callrecord.CallRecordingDataStore;
 import com.android.dialer.callrecord.CallRecording;
+import com.android.dialer.callrecord.CallRecordingDataStore;
 import com.android.dialer.callrecord.ICallRecorderService;
 import com.android.dialer.callrecord.impl.CallRecorderService;
 import com.android.dialer.location.GeoUtil;
@@ -57,8 +57,7 @@ public class CallRecorder implements CallList.Listener {
   public static final String TAG = "CallRecorder";
 
   public static final String[] REQUIRED_PERMISSIONS = new String[] {
-    android.Manifest.permission.RECORD_AUDIO,
-    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+    android.Manifest.permission.RECORD_AUDIO
   };
   private static final HashMap<String, Boolean> RECORD_ALLOWED_STATE_BY_COUNTRY = new HashMap<>();
 
@@ -67,11 +66,10 @@ public class CallRecorder implements CallList.Listener {
   private boolean initialized = false;
   private ICallRecorderService service = null;
 
-  private HashSet<RecordingProgressListener> progressListeners =
-      new HashSet<RecordingProgressListener>();
-  private Handler handler = new Handler();
+  private final HashSet<RecordingProgressListener> progressListeners = new HashSet<>();
+  private final Handler handler = new Handler(Looper.getMainLooper());
 
-  private ServiceConnection connection = new ServiceConnection() {
+  private final ServiceConnection connection = new ServiceConnection() {
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
       CallRecorder.this.service = ICallRecorderService.Stub.asInterface(service);
@@ -286,7 +284,7 @@ public class CallRecorder implements CallList.Listener {
 
   private static final int UPDATE_INTERVAL = 500;
 
-  private Runnable updateRecordingProgressTask = new Runnable() {
+  private final Runnable updateRecordingProgressTask = new Runnable() {
     @Override
     public void run() {
       CallRecording active = getActiveRecording();

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +21,6 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Handler;
-import android.support.design.widget.Snackbar;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -33,10 +33,13 @@ import android.widget.TextView;
 import com.android.dialer.R;
 import com.android.dialer.app.calllog.CallLogAsyncTaskUtil;
 import com.android.dialer.app.calllog.CallLogListItemViewHolder;
+import com.google.android.material.snackbar.Snackbar;
+
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
@@ -56,7 +59,7 @@ public class VoicemailPlaybackLayout extends LinearLayout
   private static final String TAG = VoicemailPlaybackLayout.class.getSimpleName();
   private static final int VOICEMAIL_DELETE_DELAY_MS = 3000;
 
-  private Context context;
+  private final Context context;
   private CallLogListItemViewHolder viewHolder;
   private VoicemailPlaybackPresenter presenter;
   /** Click listener to toggle speakerphone. */
@@ -89,16 +92,12 @@ public class VoicemailPlaybackLayout extends LinearLayout
           presenter.onVoicemailDeleted(viewHolder);
 
           final Uri deleteUri = voicemailUri;
-          final Runnable deleteCallback =
-              new Runnable() {
-                @Override
-                public void run() {
-                  if (Objects.equals(deleteUri, voicemailUri)) {
-                    CallLogAsyncTaskUtil.deleteVoicemail(
-                        context, deleteUri, VoicemailPlaybackLayout.this);
-                  }
-                }
-              };
+          final Runnable deleteCallback = () -> {
+            if (Objects.equals(deleteUri, voicemailUri)) {
+              CallLogAsyncTaskUtil.deleteVoicemail(
+                      context, deleteUri, VoicemailPlaybackLayout.this);
+            }
+          };
 
           final Handler handler = new Handler();
           // Add a little buffer time in case the user clicked "undo" at the end of the delay
@@ -110,15 +109,10 @@ public class VoicemailPlaybackLayout extends LinearLayout
                   R.string.snackbar_voicemail_deleted,
                   Snackbar.LENGTH_LONG)
               .setDuration(VOICEMAIL_DELETE_DELAY_MS)
-              .setAction(
-                  R.string.snackbar_undo,
-                  new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                      presenter.onVoicemailDeleteUndo(adapterPosition);
-                      handler.removeCallbacks(deleteCallback);
-                    }
-                  })
+              .setAction(R.string.snackbar_undo, view1 -> {
+                presenter.onVoicemailDeleteUndo(adapterPosition);
+                handler.removeCallbacks(deleteCallback);
+              })
               .setActionTextColor(
                   context.getResources().getColor(R.color.dialer_snackbar_action_text_color))
               .show();
@@ -372,12 +366,12 @@ public class VoicemailPlaybackLayout extends LinearLayout
 
     private final ScheduledExecutorService executorService;
     private final Object lock = new Object();
-    private int durationMs;
+    private final int durationMs;
 
     @GuardedBy("lock")
     private ScheduledFuture<?> scheduledFuture;
 
-    private Runnable updateClipPositionRunnable =
+    private final Runnable updateClipPositionRunnable =
         new Runnable() {
           @Override
           public void run() {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +23,6 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.Contacts;
-import android.support.v7.widget.RecyclerView.ViewHolder;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -30,23 +30,24 @@ import android.widget.ImageView;
 import android.widget.QuickContactBadge;
 
 import androidx.annotation.IntDef;
-import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.dialer.R;
 import com.android.dialer.common.Assert;
 import com.android.dialer.contactphoto.ContactPhotoManager;
-import com.android.dialer.dialercontact.DialerContact;
 import com.android.dialer.lettertile.LetterTileDrawable;
 import com.android.dialer.searchfragment.common.Projections;
 import com.android.dialer.searchfragment.common.QueryBoldingUtil;
-import com.android.dialer.searchfragment.common.R;
 import com.android.dialer.searchfragment.common.RowClickListener;
 import com.android.dialer.searchfragment.common.SearchCursor;
 import com.android.dialer.widget.BidiTextView;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /** ViewHolder for a contact row. */
-public final class SearchContactViewHolder extends ViewHolder implements OnClickListener {
+public final class SearchContactViewHolder extends RecyclerView.ViewHolder
+        implements OnClickListener {
 
   /** IntDef for the different types of actions that can be shown. */
   @Retention(RetentionPolicy.SOURCE)
@@ -68,7 +69,6 @@ public final class SearchContactViewHolder extends ViewHolder implements OnClick
 
   private int position;
   private String number;
-  private DialerContact dialerContact;
   private @CallToAction int currentAction;
 
   public SearchContactViewHolder(View view, RowClickListener listener) {
@@ -87,7 +87,6 @@ public final class SearchContactViewHolder extends ViewHolder implements OnClick
    * at the cursors set position.
    */
   public void bind(SearchCursor cursor, String query) {
-    dialerContact = getDialerContact(context, cursor);
     position = cursor.getPosition();
     number = cursor.getString(Projections.PHONE_NUMBER);
     String name = cursor.getString(Projections.DISPLAY_NAME);
@@ -96,7 +95,7 @@ public final class SearchContactViewHolder extends ViewHolder implements OnClick
         TextUtils.isEmpty(label)
             ? number
             : context.getString(
-                com.android.dialer.contacts.resources.R.string.call_subject_type_and_number,
+                R.string.call_subject_type_and_number,
                 label,
                 number);
 
@@ -203,41 +202,5 @@ public final class SearchContactViewHolder extends ViewHolder implements OnClick
     } else {
       listener.placeVoiceCall(number, position);
     }
-  }
-
-  private static DialerContact getDialerContact(Context context, Cursor cursor) {
-    DialerContact.Builder contact = DialerContact.newBuilder();
-    String displayName = cursor.getString(Projections.DISPLAY_NAME);
-    String number = cursor.getString(Projections.PHONE_NUMBER);
-    Uri contactUri =
-        Contacts.getLookupUri(
-            cursor.getLong(Projections.CONTACT_ID), cursor.getString(Projections.LOOKUP_KEY));
-
-    contact
-        .setNumber(number)
-        .setPhotoId(cursor.getLong(Projections.PHOTO_ID))
-        .setContactType(LetterTileDrawable.TYPE_DEFAULT)
-        .setNameOrNumber(displayName)
-        .setNumberLabel(
-            Phone.getTypeLabel(
-                    context.getResources(),
-                    cursor.getInt(Projections.PHONE_TYPE),
-                    cursor.getString(Projections.PHONE_LABEL))
-                .toString());
-
-    String photoUri = cursor.getString(Projections.PHOTO_URI);
-    if (photoUri != null) {
-      contact.setPhotoUri(photoUri);
-    }
-
-    if (contactUri != null) {
-      contact.setContactUri(contactUri.toString());
-    }
-
-    if (!TextUtils.isEmpty(displayName)) {
-      contact.setDisplayNumber(number);
-    }
-
-    return contact.build();
   }
 }

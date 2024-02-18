@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,15 +33,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Trace;
-import android.support.v4.app.Fragment;
 import android.text.TextUtils;
 import android.transition.TransitionManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.AccessibilityDelegate;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
@@ -52,6 +50,7 @@ import androidx.annotation.FloatRange;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
+import androidx.fragment.app.Fragment;
 
 import com.android.dialer.R;
 import com.android.dialer.common.Assert;
@@ -87,7 +86,7 @@ import com.android.incallui.sessiondata.MultimediaFragment;
 import com.android.incallui.util.AccessibilityUtil;
 import com.android.incallui.video.protocol.VideoCallScreen;
 import com.android.incallui.videotech.utils.VideoUtils;
-import com.google.common.base.Optional;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -157,7 +156,7 @@ public class AnswerFragment extends Fragment
   private SecondaryBehavior answerAndReleaseBehavior;
   private ContactGridManager contactGridManager;
   private VideoCallScreen answerVideoCallScreen;
-  private Handler handler = new Handler(Looper.getMainLooper());
+  private final Handler handler = new Handler(Looper.getMainLooper());
 
   private enum SecondaryBehavior {
     REJECT_WITH_SMS(
@@ -194,7 +193,7 @@ public class AnswerFragment extends Fragment
     };
 
     @DrawableRes
-    public int icon;
+    public final int icon;
     @StringRes
     public final int contentDescription;
     @StringRes public final int accessibilityLabel;
@@ -229,14 +228,10 @@ public class AnswerFragment extends Fragment
     answerAndReleaseButton
         .animate()
         .alpha(0)
-        .withEndAction(
-            new Runnable() {
-              @Override
-              public void run() {
-                affordanceHolderLayout.reset(false);
-                secondaryButton.animate().alpha(1);
-              }
-            });
+        .withEndAction(() -> {
+          affordanceHolderLayout.reset(false);
+          secondaryButton.animate().alpha(1);
+        });
   }
 
   private final AccessibilityDelegate accessibilityDelegate =
@@ -335,7 +330,7 @@ public class AnswerFragment extends Fragment
         }
       };
 
-  private Runnable swipeHintRestoreTimer = this::restoreSwipeHintTexts;
+  private final Runnable swipeHintRestoreTimer = this::restoreSwipeHintTexts;
 
   private void performSecondaryButtonAction() {
     secondaryBehavior.performAction(this);
@@ -409,13 +404,7 @@ public class AnswerFragment extends Fragment
             : SecondaryBehavior.REJECT_WITH_SMS;
     secondaryBehavior.applyToView(secondaryButton);
 
-    secondaryButton.setOnClickListener(
-        new OnClickListener() {
-          @Override
-          public void onClick(View v) {
-            performSecondaryButtonAction();
-          }
-        });
+    secondaryButton.setOnClickListener(v -> performSecondaryButtonAction());
     secondaryButton.setClickable(AccessibilityUtil.isAccessibilityEnabled(getContext()));
     secondaryButton.setFocusable(AccessibilityUtil.isAccessibilityEnabled(getContext()));
     secondaryButton.setAccessibilityDelegate(accessibilityDelegate);
@@ -440,13 +429,7 @@ public class AnswerFragment extends Fragment
       answerAndReleaseButton.setVisibility(View.INVISIBLE);
       answerScreenDelegate.onAnswerAndReleaseButtonDisabled();
     }
-    answerAndReleaseButton.setOnClickListener(
-        new OnClickListener() {
-          @Override
-          public void onClick(View v) {
-            performAnswerAndReleaseButtonAction();
-          }
-        });
+    answerAndReleaseButton.setOnClickListener(v -> performAnswerAndReleaseButtonAction());
   }
 
   /** Initialize chip buttons */
@@ -654,11 +637,6 @@ public class AnswerFragment extends Fragment
   }
 
   @Override
-  public void onDestroy() {
-    super.onDestroy();
-  }
-
-  @Override
   public View onCreateView(
       LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
     Trace.beginSection("AnswerFragment.onCreateView");
@@ -683,18 +661,14 @@ public class AnswerFragment extends Fragment
     importanceBadge = view.findViewById(R.id.incall_important_call_badge);
     importanceBadge
         .getViewTreeObserver()
-        .addOnGlobalLayoutListener(
-            new OnGlobalLayoutListener() {
-              @Override
-              public void onGlobalLayout() {
-                int leftRightPadding = importanceBadge.getHeight() / 2;
-                importanceBadge.setPadding(
-                    leftRightPadding,
-                    importanceBadge.getPaddingTop(),
-                    leftRightPadding,
-                    importanceBadge.getPaddingBottom());
-              }
-            });
+        .addOnGlobalLayoutListener(() -> {
+          int leftRightPadding = importanceBadge.getHeight() / 2;
+          importanceBadge.setPadding(
+              leftRightPadding,
+              importanceBadge.getPaddingTop(),
+              leftRightPadding,
+              importanceBadge.getPaddingBottom());
+        });
     updateImportanceBadgeVisibility();
 
     contactGridManager = new ContactGridManager(view, null, 0, false /* showAnonymousAvatar */);
@@ -987,14 +961,10 @@ public class AnswerFragment extends Fragment
     secondaryButton
         .animate()
         .alpha(0)
-        .withEndAction(
-            new Runnable() {
-              @Override
-              public void run() {
-                affordanceHolderLayout.reset(false);
-                secondaryButton.animate().alpha(1);
-              }
-            });
+        .withEndAction(() -> {
+          affordanceHolderLayout.reset(false);
+          secondaryButton.animate().alpha(1);
+        });
 
     TelecomUtil.silenceRinger(getContext());
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The LineageOS Project
+ * Copyright (C) 2018-2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,16 @@ package com.android.dialer.app;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.text.TextUtils;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.android.contacts.common.widget.SelectPhoneAccountDialogFragment;
 import com.android.contacts.common.widget.SelectPhoneAccountDialogOptions;
 import com.android.contacts.common.widget.SelectPhoneAccountDialogOptionsUtil;
+import com.android.dialer.R;
 import com.android.dialer.callintent.CallInitiationType;
 import com.android.dialer.callintent.CallIntentBuilder;
 import com.android.dialer.util.CallUtil;
@@ -60,7 +62,7 @@ public class AccountSelectionActivity extends AppCompatActivity {
   private String number;
   private CallInitiationType.Type initiationType;
 
-  private SelectPhoneAccountDialogFragment.SelectPhoneAccountListener listener =
+  private final SelectPhoneAccountDialogFragment.SelectPhoneAccountListener listener =
       new SelectPhoneAccountDialogFragment.SelectPhoneAccountListener() {
     @Override
     public void onPhoneAccountSelected(PhoneAccountHandle selectedAccountHandle,
@@ -85,8 +87,9 @@ public class AccountSelectionActivity extends AppCompatActivity {
     number = getIntent().getStringExtra("number");
     initiationType = CallInitiationType.Type.values()[getIntent().getIntExtra("type", 0)];
 
-    if (getFragmentManager().findFragmentByTag("dialog") == null) {
-      List<PhoneAccountHandle> handles = getIntent().getParcelableArrayListExtra("accountHandles");
+    if (getSupportFragmentManager().findFragmentByTag("dialog") == null) {
+      List<PhoneAccountHandle> handles = getIntent().getParcelableArrayListExtra("accountHandles",
+              PhoneAccountHandle.class);
       SelectPhoneAccountDialogOptions options = SelectPhoneAccountDialogOptionsUtil
           .builderWithAccounts(handles)
           .setTitle(R.string.call_via_dialog_title)
@@ -95,7 +98,7 @@ public class AccountSelectionActivity extends AppCompatActivity {
       SelectPhoneAccountDialogFragment dialog =
           SelectPhoneAccountDialogFragment.newInstance(options, listener);
 
-      dialog.show(getFragmentManager(), "dialog");
+      dialog.show(getSupportFragmentManager(), "dialog");
     }
   }
 }

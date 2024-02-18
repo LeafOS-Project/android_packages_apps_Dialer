@@ -16,6 +16,7 @@
 
 package com.android.dialer.app.calllog;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -96,6 +97,7 @@ public final class LegacyVoicemailNotifier {
         context
             .getResources()
             .getQuantityString(R.plurals.notification_voicemail_title, count, count);
+    @SuppressLint("MissingPermission")
     PersistableBundle config = pinnedTelephonyManager.getCarrierConfig();
     boolean isOngoing;
     if (config == null) {
@@ -174,7 +176,7 @@ public final class LegacyVoicemailNotifier {
   @NonNull
   private static String getNotificationTag(
       @NonNull Context context, @NonNull PhoneAccountHandle phoneAccountHandle) {
-    if (context.getSystemService(TelephonyManager.class).getPhoneCount() <= 1) {
+    if (context.getSystemService(TelephonyManager.class).getActiveModemCount() <= 1) {
       return NOTIFICATION_TAG;
     }
 

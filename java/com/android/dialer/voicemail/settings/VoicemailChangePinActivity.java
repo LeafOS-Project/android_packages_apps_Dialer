@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +17,13 @@
 
 package com.android.dialer.voicemail.settings;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.DialogInterface.OnDismissListener;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.telecom.PhoneAccountHandle;
 import android.text.Editable;
@@ -43,6 +43,7 @@ import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.android.dialer.R;
 import com.android.dialer.common.LogUtil;
@@ -54,6 +55,7 @@ import com.android.voicemail.PinChanger.ChangePinResult;
 import com.android.voicemail.PinChanger.PinSpecification;
 import com.android.voicemail.VoicemailClient;
 import com.android.voicemail.VoicemailComponent;
+
 import java.lang.ref.WeakReference;
 
 /**
@@ -61,7 +63,7 @@ import java.lang.ref.WeakReference;
  * traditional voicemail through phone call. The intent to launch this activity must contain {@link
  * VoicemailClient#PARAM_PHONE_ACCOUNT_HANDLE}
  */
-public class VoicemailChangePinActivity extends Activity
+public class VoicemailChangePinActivity extends AppCompatActivity
     implements OnClickListener, OnEditorActionListener, TextWatcher {
 
   private static final String TAG = "VmChangePinActivity";
@@ -96,7 +98,7 @@ public class VoicemailChangePinActivity extends Activity
   private Button cancelButton;
   private Button nextButton;
 
-  private Handler handler = new ChangePinHandler(new WeakReference<>(this));
+  private final Handler handler = new ChangePinHandler(new WeakReference<>(this));
 
   private enum State {
     /**
@@ -164,12 +166,7 @@ public class VoicemailChangePinActivity extends Activity
               .setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
           activity.showError(
               activity.getString(R.string.change_pin_system_error),
-              new OnDismissListener() {
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                  activity.finish();
-                }
-              });
+                  dialog -> activity.finish());
         } else {
           LogUtil.e(TAG, "invalid default old PIN: " + activity.getChangePinResultMessage(result));
           // If the default old PIN is rejected by the server, the PIN is probably changed
@@ -241,7 +238,7 @@ public class VoicemailChangePinActivity extends Activity
       public void onEnter(VoicemailChangePinActivity activity) {
         activity.headerText.setText(R.string.change_pin_confirm_pin_header);
         activity.hintText.setText(null);
-        activity.nextButton.setText(R.string.change_pin_ok_label);
+        activity.nextButton.setText(android.R.string.ok);
       }
 
       @Override
@@ -324,7 +321,8 @@ public class VoicemailChangePinActivity extends Activity
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
-    phoneAccountHandle = getIntent().getParcelableExtra(VoicemailClient.PARAM_PHONE_ACCOUNT_HANDLE);
+    phoneAccountHandle = getIntent().getParcelableExtra(VoicemailClient.PARAM_PHONE_ACCOUNT_HANDLE,
+            PhoneAccountHandle.class);
     pinChanger =
         VoicemailComponent.get(this)
             .getVoicemailClient()
@@ -355,7 +353,7 @@ public class VoicemailChangePinActivity extends Activity
     changePinExecutor =
         DialerExecutorComponent.get(this)
             .dialerExecutorFactory()
-            .createUiTaskBuilder(getFragmentManager(), "changePin", new ChangePinWorker())
+            .createUiTaskBuilder(getSupportFragmentManager(), "changePin", new ChangePinWorker())
             .onSuccess(this::sendResult)
             .onFailure((tr) -> sendResult(PinChanger.CHANGE_PIN_SYSTEM_ERROR))
             .build();
@@ -564,6 +562,7 @@ public class VoicemailChangePinActivity extends Activity
     private final WeakReference<VoicemailChangePinActivity> activityWeakReference;
 
     private ChangePinHandler(WeakReference<VoicemailChangePinActivity> activityWeakReference) {
+      super(Looper.getMainLooper());
       this.activityWeakReference = activityWeakReference;
     }
 
