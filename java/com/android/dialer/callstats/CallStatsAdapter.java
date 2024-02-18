@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
  * Copyright (C) 2013 Android Open Kang Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +20,14 @@ package com.android.dialer.callstats;
 
 import android.content.Context;
 import android.content.Intent;
-import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.dialer.R;
 import com.android.dialer.app.contactinfo.ContactInfoCache;
@@ -42,7 +44,6 @@ import com.android.dialer.util.ExpirableCache;
 import com.android.dialer.util.PermissionsUtil;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,10 +57,10 @@ class CallStatsAdapter extends RecyclerView.Adapter {
   private final ContactInfoCache mContactInfoCache;
   private final ContactDisplayPreferences mContactDisplayPreferences;
 
-  private ArrayList<CallStatsDetails> mAllItems;
-  private ArrayList<CallStatsDetails> mShownItems;
-  private CallStatsDetails mTotalItem;
-  private Map<CallStatsDetails, ContactInfo> mInfoLookup;
+  private final ArrayList<CallStatsDetails> mAllItems;
+  private final ArrayList<CallStatsDetails> mShownItems;
+  private final CallStatsDetails mTotalItem;
+  private final Map<CallStatsDetails, ContactInfo> mInfoLookup;
 
   private int mType = -1;
   private long mFilterFrom;
@@ -128,13 +129,12 @@ class CallStatsAdapter extends RecyclerView.Adapter {
     final String currentCountryIso = GeoUtil.getCurrentCountryIso(mContext);
     mContactInfoHelper = new ContactInfoHelper(mContext, currentCountryIso);
 
-    mAllItems = new ArrayList<CallStatsDetails>();
-    mShownItems = new ArrayList<CallStatsDetails>();
+    mAllItems = new ArrayList<>();
+    mShownItems = new ArrayList<>();
     mTotalItem = new CallStatsDetails(null, 0, null, null, null, null, null, 0);
     mInfoLookup = new ConcurrentHashMap<>();
 
-    mContactInfoCache = new ContactInfoCache(cache,
-        mContactInfoHelper, () -> notifyDataSetChanged());
+    mContactInfoCache = new ContactInfoCache(cache, mContactInfoHelper, this::notifyDataSetChanged);
     if (!PermissionsUtil.hasContactsReadPermissions(context)) {
       mContactInfoCache.disableRequestProcessing();
     }
@@ -170,7 +170,7 @@ class CallStatsAdapter extends RecyclerView.Adapter {
       }
     }
 
-    Collections.sort(mShownItems, sortByDuration ? mDurationComparator : mCountComparator);
+    mShownItems.sort(sortByDuration ? mDurationComparator : mCountComparator);
     notifyDataSetChanged();
   }
 

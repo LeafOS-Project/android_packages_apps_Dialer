@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +22,10 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Insets;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.ContextCompat;
+import android.os.Looper;
 import android.telecom.CallAudioState;
 import android.telephony.TelephonyManager;
 import android.transition.TransitionManager;
@@ -35,12 +35,18 @@ import android.view.View.OnAttachStateChangeListener;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.android.dialer.R;
 import com.android.dialer.common.Assert;
@@ -68,6 +74,7 @@ import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryCallState.ButtonState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
 import com.android.incallui.incall.protocol.SecondaryInfo;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -79,7 +86,7 @@ public class InCallFragment extends Fragment
         AudioRouteSelectorPresenter,
         OnButtonGridCreatedListener {
 
-  private List<ButtonController> buttonControllers = new ArrayList<>();
+  private final List<ButtonController> buttonControllers = new ArrayList<>();
   private View endCallButton;
   private InCallPaginator paginator;
   private LockableViewPager pager;
@@ -95,11 +102,18 @@ public class InCallFragment extends Fragment
   private int phoneType;
   private boolean stateRestored;
 
-  private static final int REQUEST_CODE_CALL_RECORD_PERMISSION = 1000;
+  private final ActivityResultLauncher<String[]> permissionLauncher = registerForActivityResult(
+          new ActivityResultContracts.RequestMultiplePermissions(),
+          grantResults -> {
+            boolean allGranted = grantResults.values().stream().allMatch(x -> x);
+            if (allGranted) {
+              inCallButtonUiDelegate.callRecordClicked(true);
+            }
+          });
 
   // Add animation to educate users. If a call has enriched calling attachments then we'll
   // initially show the attachment page. After a delay seconds we'll animate to the button grid.
-  private final Handler handler = new Handler();
+  private final Handler handler = new Handler(Looper.getMainLooper());
   private final Runnable pagerRunnable =
       new Runnable() {
         @Override
@@ -138,7 +152,6 @@ public class InCallFragment extends Fragment
         FragmentUtils.getParent(this, InCallButtonUiDelegateFactory.class)
             .newInCallButtonUiDelegate();
     if (savedInstanceState != null) {
-      inCallButtonUiDelegate.onRestoreInstanceState(savedInstanceState);
       stateRestored = true;
     }
   }
@@ -190,8 +203,9 @@ public class InCallFragment extends Fragment
           @Override
           public void onViewAttachedToWindow(View v) {
             View container = v.findViewById(R.id.incall_ui_container);
-            int topInset = v.getRootWindowInsets().getSystemWindowInsetTop();
-            int bottomInset = v.getRootWindowInsets().getSystemWindowInsetBottom();
+            Insets insets = v.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars());
+            int topInset = insets.top;
+            int bottomInset = insets.bottom;
             if (topInset != container.getPaddingTop()) {
               TransitionManager.beginDelayedTransition(((ViewGroup) container.getParent()));
               container.setPadding(0, topInset, 0, bottomInset);
@@ -252,19 +266,13 @@ public class InCallFragment extends Fragment
   }
 
   @Override
-  public void onSaveInstanceState(Bundle outState) {
-    super.onSaveInstanceState(outState);
-    inCallButtonUiDelegate.onSaveInstanceState(outState);
-  }
-
-  @Override
   public void onClick(View view) {
     if (view == endCallButton) {
       LogUtil.i("InCallFragment.onClick", "end call button clicked");
       inCallScreenDelegate.onEndCallClicked();
     } else {
       LogUtil.e("InCallFragment.onClick", "unknown view: " + view);
-      Assert.fail();
+      Assert.createAssertionFailException("");
     }
   }
 
@@ -463,23 +471,7 @@ public class InCallFragment extends Fragment
 
   @Override
   public void requestCallRecordingPermissions(String[] permissions) {
-    requestPermissions(permissions, REQUEST_CODE_CALL_RECORD_PERMISSION);
-  }
-
-  @Override
-  public void onRequestPermissionsResult(int requestCode,
-      @NonNull String[] permissions, @NonNull int[] grantResults) {
-    if (requestCode == REQUEST_CODE_CALL_RECORD_PERMISSION) {
-      boolean allGranted = grantResults.length > 0;
-      for (int i = 0; i < grantResults.length; i++) {
-        allGranted &= grantResults[i] == PackageManager.PERMISSION_GRANTED;
-      }
-      if (allGranted) {
-        inCallButtonUiDelegate.callRecordClicked(true);
-      }
-    } else {
-      super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
+    permissionLauncher.launch(permissions);
   }
 
   @Override
@@ -537,7 +529,7 @@ public class InCallFragment extends Fragment
         return buttonController;
       }
     }
-    Assert.fail();
+    Assert.createAssertionFailException("");
     return null;
   }
 

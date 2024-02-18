@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +23,18 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.FragmentActivity;
 
 import com.android.dialer.callintent.CallIntentBuilder;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.common.concurrent.DialerExecutorComponent;
-import com.android.dialer.common.concurrent.UiListener;
+import com.android.dialer.common.concurrent.SupportUiListener;
 import com.android.dialer.function.Consumer;
 import com.android.dialer.precall.PreCallAction;
 import com.android.dialer.precall.PreCallComponent;
 import com.android.dialer.precall.PreCallCoordinator;
 import com.android.dialer.telecom.TelecomUtil;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -57,7 +58,7 @@ public class PreCallCoordinatorImpl implements PreCallCoordinator {
   private PendingAction pendingAction;
   private boolean aborted = false;
 
-  private UiListener<Object> uiListener;
+  private SupportUiListener<Object> uiListener;
 
   PreCallCoordinatorImpl(@NonNull Activity activity) {
     this.activity = Assert.isNotNull(activity);
@@ -67,18 +68,21 @@ public class PreCallCoordinatorImpl implements PreCallCoordinator {
     LogUtil.enterBlock("PreCallCoordinatorImpl.onCreate");
     if (savedInstanceState != null) {
       currentActionIndex = savedInstanceState.getInt(SAVED_STATE_CURRENT_ACTION);
-      builder = Assert.isNotNull(savedInstanceState.getParcelable(EXTRA_CALL_INTENT_BUILDER));
+      builder = Assert.isNotNull(savedInstanceState.getParcelable(EXTRA_CALL_INTENT_BUILDER,
+              CallIntentBuilder.class));
     } else {
-      builder = Assert.isNotNull(intent.getParcelableExtra(EXTRA_CALL_INTENT_BUILDER));
+      builder = Assert.isNotNull(intent.getParcelableExtra(EXTRA_CALL_INTENT_BUILDER,
+              CallIntentBuilder.class));
     }
     uiListener =
         DialerExecutorComponent.get(activity)
-            .createUiListener(activity.getFragmentManager(), "PreCallCoordinatorImpl.uiListener");
+            .createUiListener(((FragmentActivity)activity).getSupportFragmentManager(),
+                    "PreCallCoordinatorImpl.uiListener");
   }
 
   void onRestoreInstanceState(Bundle savedInstanceState) {
     currentActionIndex = savedInstanceState.getInt(SAVED_STATE_CURRENT_ACTION);
-    builder = savedInstanceState.getParcelable(EXTRA_CALL_INTENT_BUILDER);
+    builder = savedInstanceState.getParcelable(EXTRA_CALL_INTENT_BUILDER, CallIntentBuilder.class);
   }
 
   void onResume() {

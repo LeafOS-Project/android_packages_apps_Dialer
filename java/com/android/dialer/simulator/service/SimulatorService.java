@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,10 +34,11 @@ import android.os.RemoteException;
 import androidx.annotation.Nullable;
 
 import com.android.dialer.simulator.impl.SimulatorMainPortal;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 
 /**
  * A secured android service that gives clients simulator api access through binder if clients do
@@ -89,34 +91,22 @@ public class SimulatorService extends Service {
 
         @Override
         public void populateDataBase() throws RemoteException {
-          doSecurityCheck(
-              () -> {
-                simulatorMainPortal.execute(new String[] {POPULATE_DATABASE});
-              });
+          doSecurityCheck(() -> simulatorMainPortal.execute(new String[] {POPULATE_DATABASE}));
         }
 
         @Override
         public void cleanDataBase() throws RemoteException {
-          doSecurityCheck(
-              () -> {
-                simulatorMainPortal.execute(new String[] {CLEAN_DATABASE});
-              });
+          doSecurityCheck(() -> simulatorMainPortal.execute(new String[] {CLEAN_DATABASE}));
         }
 
         @Override
         public void enableSimulatorMode() throws RemoteException {
-          doSecurityCheck(
-              () -> {
-                simulatorMainPortal.execute(new String[] {ENABLE_SIMULATOR_MODE});
-              });
+          doSecurityCheck(() -> simulatorMainPortal.execute(new String[] {ENABLE_SIMULATOR_MODE}));
         }
 
         @Override
         public void disableSimulatorMode() throws RemoteException {
-          doSecurityCheck(
-              () -> {
-                simulatorMainPortal.execute(new String[] {DISABLE_SIMULATOR_MODE});
-              });
+          doSecurityCheck(() -> simulatorMainPortal.execute(new String[] {DISABLE_SIMULATOR_MODE}));
         }
 
         @Override
@@ -177,7 +167,7 @@ public class SimulatorService extends Service {
         return Optional.of(processInfo.processName);
       }
     }
-    return Optional.absent();
+    return Optional.empty();
   }
 
   private static boolean isCertificateValid(

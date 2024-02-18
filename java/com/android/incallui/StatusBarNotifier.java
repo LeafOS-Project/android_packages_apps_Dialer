@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +32,10 @@ import static com.android.incallui.NotificationBroadcastReceiver.ACTION_TURN_OFF
 import static com.android.incallui.NotificationBroadcastReceiver.ACTION_TURN_ON_SPEAKER;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.PendingIntent;
+import android.app.Person;
 import android.app.admin.DevicePolicyManager;
 import android.content.Context;
 import android.content.Intent;
@@ -61,6 +64,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresPermission;
 import androidx.annotation.StringRes;
+import androidx.core.content.res.ResourcesCompat;
 
 import com.android.contacts.common.ContactsUtils;
 import com.android.contacts.common.ContactsUtils.UserType;
@@ -78,7 +82,7 @@ import com.android.dialer.util.DrawableConverter;
 import com.android.incallui.ContactInfoCache.ContactCacheEntry;
 import com.android.incallui.ContactInfoCache.ContactInfoCacheCallback;
 import com.android.incallui.InCallPresenter.InCallState;
-import com.android.incallui.async.PausableExecutorImpl;
+import com.android.incallui.async.PausableExecutor;
 import com.android.incallui.audiomode.AudioModeProvider;
 import com.android.incallui.call.CallList;
 import com.android.incallui.call.DialerCall;
@@ -89,6 +93,7 @@ import com.android.incallui.ringtone.DialerRingtoneManager;
 import com.android.incallui.ringtone.InCallTonePlayer;
 import com.android.incallui.ringtone.ToneGeneratorFactory;
 import com.android.incallui.videotech.utils.SessionModificationState;
+
 import java.util.Objects;
 
 /** This class adds Notifications to the status bar for the in-call experience. */
@@ -131,7 +136,7 @@ public class StatusBarNotifier
     this.contactInfoCache = contactInfoCache;
     dialerRingtoneManager =
         new DialerRingtoneManager(
-            new InCallTonePlayer(new ToneGeneratorFactory(), new PausableExecutorImpl()),
+            new InCallTonePlayer(new ToneGeneratorFactory(), new PausableExecutor()),
             CallList.getInstance());
     currentNotification = NOTIFICATION_NONE;
     Trace.endSection();
@@ -165,7 +170,7 @@ public class StatusBarNotifier
    */
   private static PendingIntent createNotificationPendingIntent(Context context, String action) {
     final Intent intent = new Intent(action, null, context, NotificationBroadcastReceiver.class);
-    return PendingIntent.getBroadcast(context, 0, intent, 0);
+    return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
   }
 
   /** Creates notifications according to the state we receive from {@link InCallPresenter}. */
@@ -335,8 +340,6 @@ public class StatusBarNotifier
         configureFullScreenIntent(builder, createLaunchPendingIntent(true /* isFullScreen */));
         // Set the notification category and bump the priority for incoming calls
         builder.setCategory(Notification.CATEGORY_CALL);
-        // This will be ignored on O+ and handled by the channel
-        builder.setPriority(Notification.PRIORITY_MAX);
         if (currentNotification != NOTIFICATION_INCOMING_CALL) {
           LogUtil.i(
               "StatusBarNotifier.buildAndSendNotification",
@@ -548,10 +551,14 @@ public class StatusBarNotifier
     // Query {@link Contacts#CONTENT_LOOKUP_URI} directly with work lookup key is not allowed.
     // So, do not pass {@link Contacts#CONTENT_LOOKUP_URI} to NotificationManager to avoid
     // NotificationManager using it.
+    String uri = null;
     if (contactInfo.lookupUri != null && contactInfo.userType != ContactsUtils.USER_TYPE_WORK) {
-      builder.addPerson(contactInfo.lookupUri.toString());
+      uri = contactInfo.lookupUri.toString();
     } else if (!TextUtils.isEmpty(call.getNumber())) {
-      builder.addPerson(Uri.fromParts(PhoneAccount.SCHEME_TEL, call.getNumber(), null).toString());
+      uri = Uri.fromParts(PhoneAccount.SCHEME_TEL, call.getNumber(), null).toString();
+    }
+    if (uri != null) {
+      builder.addPerson(new Person.Builder().setUri(uri).build());
     }
   }
 
@@ -586,7 +593,8 @@ public class StatusBarNotifier
     }
 
     if (call.isSpam()) {
-      Drawable drawable = resources.getDrawable(R.drawable.blocked_contact, context.getTheme());
+      Drawable drawable = ResourcesCompat.getDrawable(resources, R.drawable.blocked_contact,
+              context.getTheme());
       largeIcon = DrawableConverter.drawableToBitmap(drawable);
     }
     Trace.endSection();
@@ -940,7 +948,7 @@ public class StatusBarNotifier
     // and clicks the notification's expanded view.  It's also used to
     // launch the InCallActivity immediately when when there's an incoming
     // call (see the "fullScreenIntent" field below).
-    return PendingIntent.getActivity(context, requestCode, intent, 0);
+    return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_IMMUTABLE);
   }
 
   private void setStatusBarCallListener(StatusBarCallListener listener) {
@@ -978,7 +986,7 @@ public class StatusBarNotifier
 
   private class StatusBarCallListener implements DialerCallListener {
 
-    private DialerCall dialerCall;
+    private final DialerCall dialerCall;
 
     StatusBarCallListener(DialerCall dialerCall) {
       this.dialerCall = dialerCall;
@@ -1021,6 +1029,7 @@ public class StatusBarNotifier
      * Responds to changes in the session modification state for the call by dismissing the status
      * bar notification as required.
      */
+    @SuppressLint("MissingPermission")
     @Override
     public void onDialerCallSessionModificationStateChange() {
       if (dialerCall.getVideoTech().getSessionModificationState()

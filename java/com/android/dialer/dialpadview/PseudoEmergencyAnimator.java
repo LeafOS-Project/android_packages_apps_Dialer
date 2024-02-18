@@ -25,6 +25,8 @@ import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.LightingColorFilter;
 import android.os.Handler;
+import android.os.Looper;
+import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.View;
 
@@ -92,7 +94,7 @@ public class PseudoEmergencyAnimator {
                   viewProvider.getFab().getBackground().clearColorFilter();
                 }
 
-                new Handler()
+                new Handler(Looper.getMainLooper())
                     .postDelayed(
                         () -> {
                           try {
@@ -126,9 +128,10 @@ public class PseudoEmergencyAnimator {
   private void vibrate(long milliseconds) {
     Context context = viewProvider.getContext();
     if (context != null) {
-      Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-      if (vibrator != null) {
-        vibrator.vibrate(milliseconds);
+      Vibrator vibrator = context.getSystemService(Vibrator.class);
+      if (vibrator != null && vibrator.hasVibrator()) {
+        vibrator.vibrate(VibrationEffect.createOneShot(milliseconds,
+                VibrationEffect.DEFAULT_AMPLITUDE));
       }
     }
   }

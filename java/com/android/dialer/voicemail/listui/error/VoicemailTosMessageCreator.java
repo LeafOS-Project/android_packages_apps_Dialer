@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +20,8 @@ package com.android.dialer.voicemail.listui.error;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.TelephonyManager;
 import android.text.Layout;
@@ -32,10 +31,9 @@ import android.text.TextUtils;
 import android.text.style.AlignmentSpan;
 import android.text.style.TextAppearanceSpan;
 import android.text.style.URLSpan;
-import android.view.View;
-import android.view.View.OnClickListener;
 
 import androidx.annotation.Nullable;
+import androidx.preference.PreferenceManager;
 
 import com.android.dialer.R;
 import com.android.dialer.common.LogUtil;
@@ -45,6 +43,7 @@ import com.android.voicemail.VisualVoicemailTypeExtensions;
 import com.android.voicemail.VoicemailClient;
 import com.android.voicemail.VoicemailComponent;
 import com.android.voicemail.VoicemailVersionConstants;
+
 import java.util.Locale;
 
 /**
@@ -87,29 +86,23 @@ public class VoicemailTosMessageCreator {
             getNewUserTosMessageText(),
             new Action(
                 getDeclineText(),
-                new OnClickListener() {
-                  @Override
-                  public void onClick(View v) {
-                    LogUtil.i("VoicemailTosMessageCreator.getTosMessage", "decline clicked");
-                    PhoneAccountHandle handle =
-                        new PhoneAccountHandle(
-                            ComponentName.unflattenFromString(status.phoneAccountComponentName),
-                            status.phoneAccountId);
-                    showDeclineTosDialog(handle);
-                  }
-                }),
+                    v -> {
+                      LogUtil.i("VoicemailTosMessageCreator.getTosMessage", "decline clicked");
+                      PhoneAccountHandle handle =
+                          new PhoneAccountHandle(
+                              ComponentName.unflattenFromString(status.phoneAccountComponentName),
+                              status.phoneAccountId);
+                      showDeclineTosDialog(handle);
+                    }),
             new Action(
                 getAcceptText(),
-                new OnClickListener() {
-                  @Override
-                  public void onClick(View v) {
-                    LogUtil.i("VoicemailTosMessageCreator.getTosMessage", "accept clicked");
-                    recordTosAcceptance();
-                    // Accepting the TOS also acknowledges the latest features
-                    recordFeatureAcknowledgement();
-                    statusReader.refresh();
-                  }
-                },
+                    v -> {
+                      LogUtil.i("VoicemailTosMessageCreator.getTosMessage", "accept clicked");
+                      recordTosAcceptance();
+                      // Accepting the TOS also acknowledges the latest features
+                      recordFeatureAcknowledgement();
+                      statusReader.refresh();
+                    },
                 true /* raised */))
         .setModal(true)
         .setImageResourceId(R.drawable.voicemail_tos_image);
@@ -172,28 +165,15 @@ public class VoicemailTosMessageCreator {
     AlertDialog.Builder builder = new AlertDialog.Builder(context);
     builder.setTitle(R.string.terms_and_conditions_decline_dialog_title);
     builder.setMessage(getTosDeclinedDialogMessageId());
-    builder.setPositiveButton(
-        getTosDeclinedDialogDowngradeId(),
-        new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-            VoicemailClient voicemailClient = VoicemailComponent.get(context).getVoicemailClient();
-            if (voicemailClient.isVoicemailModuleEnabled()) {
-              voicemailClient.setVoicemailEnabled(context, status.getPhoneAccountHandle(), false);
-            } else {
-              TelephonyManagerCompat.setVisualVoicemailEnabled(telephonyManager, handle, false);
-            }
-          }
-        });
-
-    builder.setNegativeButton(
-        android.R.string.cancel,
-        new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-            dialog.dismiss();
-          }
-        });
+    builder.setPositiveButton(getTosDeclinedDialogDowngradeId(), (dialog, which) -> {
+      VoicemailClient voicemailClient = VoicemailComponent.get(context).getVoicemailClient();
+      if (voicemailClient.isVoicemailModuleEnabled()) {
+        voicemailClient.setVoicemailEnabled(context, status.getPhoneAccountHandle(), false);
+      } else {
+        TelephonyManagerCompat.setVisualVoicemailEnabled(telephonyManager, handle, false);
+      }
+    });
+    builder.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss());
 
     builder.setCancelable(true);
     builder.show();
@@ -204,23 +184,12 @@ public class VoicemailTosMessageCreator {
     builder.setMessage(R.string.verizon_terms_and_conditions_decline_set_pin_dialog_message);
     builder.setPositiveButton(
         R.string.verizon_terms_and_conditions_decline_set_pin_dialog_set_pin,
-        new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-            Intent intent = new Intent(TelephonyManager.ACTION_CONFIGURE_VOICEMAIL);
-            intent.putExtra(TelephonyManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle);
-            context.startActivity(intent);
-          }
-        });
-
-    builder.setNegativeButton(
-        android.R.string.cancel,
-        new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-            dialog.dismiss();
-          }
-        });
+            (dialog, which) -> {
+              Intent intent = new Intent(TelephonyManager.ACTION_CONFIGURE_VOICEMAIL);
+              intent.putExtra(TelephonyManager.EXTRA_PHONE_ACCOUNT_HANDLE, phoneAccountHandle);
+              context.startActivity(intent);
+            });
+    builder.setNegativeButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss());
 
     builder.setCancelable(true);
     builder.show();

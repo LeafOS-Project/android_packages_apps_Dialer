@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +20,6 @@ package com.android.dialer.dialpadview;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.DialogFragment;
-import android.app.Fragment;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -41,7 +40,6 @@ import android.provider.Contacts.People;
 import android.provider.Contacts.Phones;
 import android.provider.Contacts.PhonesColumns;
 import android.provider.Settings;
-import android.support.design.widget.FloatingActionButton;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
@@ -76,6 +74,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
 
 import com.android.contacts.common.dialog.CallSubjectDialog;
 import com.android.dialer.R;
@@ -99,8 +99,9 @@ import com.android.dialer.util.CallUtil;
 import com.android.dialer.util.PermissionsUtil;
 import com.android.dialer.util.ViewUtil;
 import com.android.dialer.widget.FloatingActionButtonController;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.common.base.Ascii;
-import com.google.common.base.Optional;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -373,7 +374,7 @@ public class DialpadFragment extends Fragment
         DialerExecutorComponent.get(getContext())
             .dialerExecutorFactory()
             .createUiTaskBuilder(
-                getFragmentManager(),
+                getParentFragmentManager(),
                 "DialpadFragment.initPhoneNumberFormattingTextWatcher",
                 new InitPhoneNumberFormattingTextWatcherWorker())
             .onSuccess(watcher -> dialpadView.getDigits().addTextChangedListener(watcher))
@@ -1070,18 +1071,17 @@ public class DialpadFragment extends Fragment
         } else if (getActivity() != null) {
           // Voicemail is unavailable maybe because Airplane mode is turned on.
           // Check the current status and show the most appropriate error message.
-          final boolean isAirplaneModeOn =
-              Settings.System.getInt(
-                      getActivity().getContentResolver(), Settings.System.AIRPLANE_MODE_ON, 0)
-                  != 0;
+          final boolean isAirplaneModeOn = Settings.Global.getInt(
+                  getActivity().getContentResolver(), Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
           if (isAirplaneModeOn) {
             DialogFragment dialogFragment =
                 ErrorDialogFragment.newInstance(R.string.dialog_voicemail_airplane_mode_message);
-            dialogFragment.show(getFragmentManager(), "voicemail_request_during_airplane_mode");
+            dialogFragment.show(getParentFragmentManager(),
+                    "voicemail_request_during_airplane_mode");
           } else {
             DialogFragment dialogFragment =
                 ErrorDialogFragment.newInstance(R.string.dialog_voicemail_not_ready_message);
-            dialogFragment.show(getFragmentManager(), "voicemail_not_ready");
+            dialogFragment.show(getParentFragmentManager(), "voicemail_not_ready");
           }
         }
         return true;
@@ -1387,7 +1387,8 @@ public class DialpadFragment extends Fragment
   public boolean onMenuItemClick(MenuItem item) {
     if (item.getGroupId() == Menu.FIRST) {
       Intent intent = item.getIntent();
-      selectedAccount = intent.getParcelableExtra(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE);
+      selectedAccount = intent.getParcelableExtra(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE,
+              PhoneAccountHandle.class);
       return true;
     }
     int resId = item.getItemId();
@@ -1755,8 +1756,8 @@ public class DialpadFragment extends Fragment
     static final int DIALPAD_CHOICE_RETURN_TO_CALL = 102;
     static final int DIALPAD_CHOICE_ADD_NEW_CALL = 103;
     private static final int NUM_ITEMS = 3;
-    private LayoutInflater inflater;
-    private ChoiceItem[] choiceItems = new ChoiceItem[NUM_ITEMS];
+    private final LayoutInflater inflater;
+    private final ChoiceItem[] choiceItems = new ChoiceItem[NUM_ITEMS];
 
     DialpadChooserAdapter(Context context) {
       // Cache the LayoutInflate to avoid asking for a new one each time.
@@ -1828,9 +1829,9 @@ public class DialpadFragment extends Fragment
     // Simple struct for a single "choice" item.
     static class ChoiceItem {
 
-      String text;
-      Bitmap icon;
-      int id;
+      final String text;
+      final Bitmap icon;
+      final int id;
 
       ChoiceItem(String s, Bitmap b, int i) {
         text = s;

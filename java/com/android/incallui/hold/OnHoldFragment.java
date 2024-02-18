@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +18,6 @@
 package com.android.incallui.hold;
 
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.telephony.PhoneNumberUtils;
 import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
@@ -26,11 +26,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnAttachStateChangeListener;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 
 import com.android.dialer.R;
 import com.android.dialer.common.Assert;
@@ -57,7 +59,7 @@ public class OnHoldFragment extends Fragment {
       LayoutInflater layoutInflater, @Nullable ViewGroup viewGroup, @Nullable Bundle bundle) {
     final View view = layoutInflater.inflate(R.layout.incall_on_hold_banner, viewGroup, false);
 
-    SecondaryInfo secondaryInfo = getArguments().getParcelable(ARG_INFO);
+    SecondaryInfo secondaryInfo = getArguments().getParcelable(ARG_INFO, SecondaryInfo.class);
     secondaryInfo = Assert.isNotNull(secondaryInfo);
 
     ((TextView) view.findViewById(R.id.hold_contact_name))
@@ -76,7 +78,7 @@ public class OnHoldFragment extends Fragment {
         new OnAttachStateChangeListener() {
           @Override
           public void onViewAttachedToWindow(View v) {
-            topInset = v.getRootWindowInsets().getSystemWindowInsetTop();
+            topInset = v.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars()).top;
             applyInset();
           }
 

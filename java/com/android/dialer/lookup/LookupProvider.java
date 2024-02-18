@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Xiao-Long Chen <chillermillerlong@hotmail.com>
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,32 +17,25 @@
 
 package com.android.dialer.lookup;
 
+import android.annotation.SuppressLint;
 import android.content.ContentProvider;
-import android.content.ContentResolver;
 import android.content.ContentValues;
-import android.content.Context;
 import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.MatrixCursor;
-import android.location.Criteria;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
+import android.os.CancellationSignal;
 import android.os.ParcelFileDescriptor;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.StructuredPostal;
 import android.provider.ContactsContract.Contacts;
-import android.provider.Settings;
 import android.util.Log;
 
-import com.android.dialer.searchfragment.common.Projections;
 import com.android.dialer.phonenumbercache.ContactInfo;
+import com.android.dialer.searchfragment.common.Projections;
 import com.android.dialer.util.PermissionsUtil;
-import com.android.dialer.R;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -49,17 +43,18 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.TimeUnit;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class LookupProvider extends ContentProvider {
   private static final String TAG = LookupProvider.class.getSimpleName();
@@ -166,12 +161,9 @@ public class LookupProvider extends ContentProvider {
         final Location finalLastLocation = lastLocation;
         final int finalMaxResults = maxResults;
 
-        return execute(new Callable<Cursor>() {
-          @Override
-          public Cursor call() {
-            return handleFilter(match, projection, filter, finalMaxResults, finalLastLocation);
-          }
-        }, "FilterThread");
+        return execute(
+                () -> handleFilter(match, projection, filter, finalMaxResults, finalLastLocation),
+                "FilterThread");
     }
 
     return null;
@@ -235,15 +227,8 @@ public class LookupProvider extends ContentProvider {
    * @return Whether location services are enabled
    */
   private boolean isLocationEnabled() {
-    try {
-      int mode = Settings.Secure.getInt(getContext().getContentResolver(),
-          Settings.Secure.LOCATION_MODE);
-
-      return mode != Settings.Secure.LOCATION_MODE_OFF;
-    } catch (Settings.SettingNotFoundException e) {
-      Log.e(TAG, "Failed to get location mode", e);
-      return false;
-    }
+      LocationManager locationManager = requireContext().getSystemService(LocationManager.class);
+      return locationManager.isLocationEnabled();
   }
 
   /**
@@ -251,27 +236,13 @@ public class LookupProvider extends ContentProvider {
    *
    * @return The last location
    */
+  @SuppressLint("MissingPermission")
   private Location getLastLocation() {
-    LocationManager locationManager = getContext().getSystemService(LocationManager.class);
+    LocationManager locationManager = requireContext().getSystemService(LocationManager.class);
 
     try {
-      locationManager.requestSingleUpdate(new Criteria(), new LocationListener() {
-        @Override
-        public void onLocationChanged(Location location) {
-        }
-
-        @Override
-        public void onProviderDisabled(String provider) {
-        }
-
-        @Override
-        public void onProviderEnabled(String provider) {
-        }
-
-        @Override
-        public void onStatusChanged(String provider, int status, Bundle extras) {
-        }
-      }, Looper.getMainLooper());
+      locationManager.getCurrentLocation(LocationManager.FUSED_PROVIDER, new CancellationSignal(),
+              Executors.newSingleThreadExecutor(), location -> {});
 
       return locationManager.getLastKnownLocation(LocationManager.FUSED_PROVIDER);
     } catch (IllegalArgumentException e) {
@@ -296,10 +267,7 @@ public class LookupProvider extends ContentProvider {
       return null;
     }
 
-    try {
-      filter = URLDecoder.decode(filter, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-    }
+    filter = URLDecoder.decode(filter, StandardCharsets.UTF_8);
 
     ArrayList<ContactInfo> results = new ArrayList<>();
     if ((type == NEARBY || type == NEARBY_AND_PEOPLE) && lastLocation != null) {
@@ -415,8 +383,8 @@ public class LookupProvider extends ContentProvider {
    * @return Instance of the thread
    */
   private <T> T execute(Callable<T> callable, String name) {
-    FutureCallable<T> futureCallable = new FutureCallable<T>(callable);
-    FutureTask<T> future = new FutureTask<T>(futureCallable);
+    FutureCallable<T> futureCallable = new FutureCallable<>(callable);
+    FutureTask<T> future = new FutureTask<>(futureCallable);
     futureCallable.setFuture(future);
 
     synchronized (activeTasks) {

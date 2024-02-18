@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,15 +30,10 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.GradientDrawable.Orientation;
 import android.os.Bundle;
 import android.os.Trace;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.content.res.ResourcesCompat;
-import android.support.v4.graphics.ColorUtils;
 import android.telecom.Call;
 import android.telecom.CallAudioState;
 import android.telecom.PhoneAccountHandle;
+import android.telecom.PhoneAccountSuggestion;
 import android.telephony.TelephonyManager;
 import android.view.KeyEvent;
 import android.view.MenuItem;
@@ -54,6 +50,11 @@ import androidx.annotation.FloatRange;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.core.graphics.ColorUtils;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.android.contacts.common.widget.SelectPhoneAccountDialogFragment;
 import com.android.dialer.R;
@@ -62,7 +63,7 @@ import com.android.dialer.animation.AnimationListenerAdapter;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.common.concurrent.DialerExecutorComponent;
-import com.android.dialer.common.concurrent.UiListener;
+import com.android.dialer.common.concurrent.SupportUiListener;
 import com.android.dialer.preferredsim.PreferredAccountRecorder;
 import com.android.dialer.preferredsim.PreferredAccountWorker;
 import com.android.dialer.preferredsim.PreferredAccountWorker.Result;
@@ -97,6 +98,7 @@ import com.android.incallui.video.protocol.VideoCallScreen;
 import com.android.incallui.video.protocol.VideoCallScreenDelegate;
 import com.android.incallui.video.protocol.VideoCallScreenDelegateFactory;
 import com.google.common.util.concurrent.ListenableFuture;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -124,7 +126,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
   private static final int DIALPAD_REQUEST_HIDE = 3;
 
   private SelectPhoneAccountListener selectPhoneAccountListener;
-  private UiListener<Result> preferredAccountWorkerResultListener;
+  private SupportUiListener<Result> preferredAccountWorkerResultListener;
 
   private Animation dialpadSlideInAnimation;
   private Animation dialpadSlideOutAnimation;
@@ -178,7 +180,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
 
     preferredAccountWorkerResultListener =
         DialerExecutorComponent.get(this)
-            .createUiListener(getFragmentManager(), "preferredAccountWorkerResultListener");
+            .createUiListener(getSupportFragmentManager(), "preferredAccountWorkerResultListener");
 
     selectPhoneAccountListener = new SelectPhoneAccountListener(getApplicationContext());
 
@@ -230,7 +232,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
 
       SelectPhoneAccountDialogFragment selectPhoneAccountDialogFragment =
           (SelectPhoneAccountDialogFragment)
-              getFragmentManager().findFragmentByTag(Tags.SELECT_ACCOUNT_FRAGMENT);
+              getSupportFragmentManager().findFragmentByTag(Tags.SELECT_ACCOUNT_FRAGMENT);
       if (selectPhoneAccountDialogFragment != null) {
         selectPhoneAccountDialogFragment.setListener(selectPhoneAccountListener);
       }
@@ -341,10 +343,17 @@ public class InCallActivity extends TransactionSafeFragmentActivity
         PreferredSimComponent.get(this).preferredAccountWorker();
 
     Bundle extras = waitingForAccountCall.getIntentExtras();
-    List<PhoneAccountHandle> phoneAccountHandles =
+    List<PhoneAccountSuggestion> phoneAccountSuggestions =
         extras == null
             ? new ArrayList<>()
-            : extras.getParcelableArrayList(Call.AVAILABLE_PHONE_ACCOUNTS);
+            : extras.getParcelableArrayList(Call.EXTRA_SUGGESTED_PHONE_ACCOUNTS,
+                PhoneAccountSuggestion.class);
+    List<PhoneAccountHandle> phoneAccountHandles = new ArrayList<>();
+    if (phoneAccountSuggestions != null) {
+      for (PhoneAccountSuggestion suggestion : phoneAccountSuggestions) {
+        phoneAccountHandles.add(suggestion.getPhoneAccountHandle());
+      }
+    }
 
     ListenableFuture<PreferredAccountWorker.Result> preferredAccountFuture =
         preferredAccountWorker.selectAccount(
@@ -370,13 +379,14 @@ public class InCallActivity extends TransactionSafeFragmentActivity
           waitingForAccountCall.setPreferredAccountRecorder(
               new PreferredAccountRecorder(
                   waitingForAccountCall.getNumber(),
-                  result.getSuggestion().orNull(),
-                  result.getDataId().orNull()));
+                  result.getSuggestion().orElse(null),
+                  result.getDataId().orElse(null)));
           selectPhoneAccountDialogFragment =
               SelectPhoneAccountDialogFragment.newInstance(
                   result.getDialogOptionsBuilder().get().setCallId(callId).build(),
                   selectPhoneAccountListener);
-          selectPhoneAccountDialogFragment.show(getFragmentManager(), Tags.SELECT_ACCOUNT_FRAGMENT);
+          selectPhoneAccountDialogFragment.show(getSupportFragmentManager(),
+                  Tags.SELECT_ACCOUNT_FRAGMENT);
         },
         throwable -> {
           throw new RuntimeException(throwable);
@@ -1026,7 +1036,7 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     List<AppTask> tasks = getSystemService(ActivityManager.class).getAppTasks();
     for (AppTask task : tasks) {
       try {
-        if (task.getTaskInfo().id == taskId) {
+        if (task.getTaskInfo().taskId == taskId) {
           task.setExcludeFromRecents(exclude);
         }
       } catch (RuntimeException e) {

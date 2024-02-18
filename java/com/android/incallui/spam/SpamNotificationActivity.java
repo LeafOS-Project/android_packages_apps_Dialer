@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +18,17 @@
 package com.android.incallui.spam;
 
 import android.app.Dialog;
-import android.app.DialogFragment;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.provider.CallLog;
 import android.provider.ContactsContract;
-import android.support.v4.app.FragmentActivity;
-import android.support.v7.app.AlertDialog;
 import android.telephony.PhoneNumberUtils;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentActivity;
 
 import com.android.dialer.R;
 import com.android.dialer.blocking.FilteredNumberAsyncQueryHandler;
@@ -63,15 +63,6 @@ public class SpamNotificationActivity extends FragmentActivity {
   private static final String CALL_INFO_KEY_CALL_ID = "call_id";
   private static final String CALL_INFO_KEY_START_TIME_MILLIS = "call_start_time_millis";
   private static final String CALL_INFO_CONTACT_LOOKUP_RESULT_TYPE = "contact_lookup_result_type";
-  private final DialogInterface.OnDismissListener dismissListener =
-      new DialogInterface.OnDismissListener() {
-        @Override
-        public void onDismiss(DialogInterface dialog) {
-          if (!isFinishing()) {
-            finish();
-          }
-        }
-      };
   private FilteredNumberAsyncQueryHandler filteredNumberAsyncQueryHandler;
 
   /**
@@ -200,7 +191,7 @@ public class SpamNotificationActivity extends FragmentActivity {
    */
   private void showNonSpamDialog() {
     FirstTimeNonSpamCallDialogFragment.newInstance(getCallInfo())
-        .show(getFragmentManager(), FirstTimeNonSpamCallDialogFragment.TAG);
+        .show(getSupportFragmentManager(), FirstTimeNonSpamCallDialogFragment.TAG);
   }
 
   /**
@@ -208,7 +199,7 @@ public class SpamNotificationActivity extends FragmentActivity {
    */
   private void showSpamFullDialog() {
     FirstTimeSpamCallDialogFragment.newInstance(getCallInfo())
-        .show(getFragmentManager(), FirstTimeSpamCallDialogFragment.TAG);
+        .show(getSupportFragmentManager(), FirstTimeSpamCallDialogFragment.TAG);
   }
 
   /** Block and report the number as spam. */
@@ -296,32 +287,22 @@ public class SpamNotificationActivity extends FragmentActivity {
           .setTitle(getString(R.string.spam_notification_title,
                   getFormattedNumber(number, applicationContext)))
           .setNeutralButton(getString(R.string.spam_notification_action_dismiss),
-              new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                  dismiss();
-                }
-              })
+                  (dialog, which) -> dismiss())
           .setPositiveButton(getString(R.string.spam_notification_block_spam_action_text),
-              new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                  dismissed = true;
-                  dismiss();
-                  spamNotificationActivity.maybeShowBlockReportSpamDialog(
-                      number, contactLookupResultType);
-                  spamNotificationActivity.maybeShowSpamBlockingPromoAndFinish();
-                }
-              })
+                  (dialog, which) -> {
+                    dismissed = true;
+                    dismiss();
+                    spamNotificationActivity.maybeShowBlockReportSpamDialog(
+                        number, contactLookupResultType);
+                    spamNotificationActivity.maybeShowSpamBlockingPromoAndFinish();
+                  })
           .setNegativeButton(getString(R.string.spam_notification_was_not_spam_action_text),
-              new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                  dismissed = true;
-                  dismiss();
-                  spamNotificationActivity.maybeShowNotSpamDialog(number, contactLookupResultType);
-                }
-              })
+                  (dialog, which) -> {
+                    dismissed = true;
+                    dismiss();
+                    spamNotificationActivity.maybeShowNotSpamDialog(number,
+                            contactLookupResultType);
+                  })
           .create();
     }
   }
@@ -378,34 +359,23 @@ public class SpamNotificationActivity extends FragmentActivity {
           .setMessage(getString(R.string.spam_notification_non_spam_call_expanded_text))
           .setNeutralButton(
               getString(R.string.spam_notification_action_dismiss),
-              new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                  dismiss();
-                }
-              })
+                  (dialog, which) -> dismiss())
           .setPositiveButton(
               getString(R.string.spam_notification_dialog_add_contact_action_text),
-              new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                  dismissed = true;
-                  dismiss();
-                  startActivity(createInsertContactsIntent(number));
-                }
-              })
+                  (dialog, which) -> {
+                    dismissed = true;
+                    dismiss();
+                    startActivity(createInsertContactsIntent(number));
+                  })
           .setNegativeButton(
                   getString(R.string.spam_notification_dialog_block_report_spam_action_text),
-              new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                  dismissed = true;
-                  dismiss();
-                  spamNotificationActivity.maybeShowBlockReportSpamDialog(
-                      number, contactLookupResultType);
-                  spamNotificationActivity.maybeShowSpamBlockingPromoAndFinish();
-                }
-              })
+                  (dialog, which) -> {
+                    dismissed = true;
+                    dismiss();
+                    spamNotificationActivity.maybeShowBlockReportSpamDialog(
+                        number, contactLookupResultType);
+                    spamNotificationActivity.maybeShowSpamBlockingPromoAndFinish();
+                  })
           .create();
     }
   }

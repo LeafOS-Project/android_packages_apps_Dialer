@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +22,8 @@ import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.provider.CallLog.Calls;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
-import android.support.v4.content.ContextCompat;
 import android.telecom.PhoneAccount;
-import android.telephony.PhoneNumberUtils;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.view.View;
@@ -39,6 +39,7 @@ import com.android.dialer.phonenumbercache.PhoneNumberCache;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
 import com.android.dialer.theme.base.ThemeComponent;
 import com.android.dialer.util.DialerUtils;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
@@ -57,7 +58,7 @@ public class PhoneCallDetailsHelper {
   private final CachedNumberLookupService cachedNumberLookupService;
 
   /** List of items to be concatenated together for accessibility descriptions */
-  private ArrayList<CharSequence> descriptionItems = new ArrayList<>();
+  private final ArrayList<CharSequence> descriptionItems = new ArrayList<>();
 
   /**
    * Creates a new instance of the helper.
@@ -150,7 +151,8 @@ public class PhoneCallDetailsHelper {
       int color = callLogCache.getAccountColor(details.accountHandle);
       if (color == PhoneAccount.NO_HIGHLIGHT_COLOR) {
         int defaultColor = R.color.dialer_secondary_text_color;
-        views.callAccountLabel.setTextColor(context.getResources().getColor(defaultColor));
+        views.callAccountLabel.setTextColor(context.getResources().getColor(defaultColor,
+                context.getTheme()));
       } else {
         views.callAccountLabel.setTextColor(color);
       }
@@ -179,7 +181,8 @@ public class PhoneCallDetailsHelper {
       return;
     }
 
-    if (PhoneNumberUtils.isEmergencyNumber(details.displayNumber)) {
+    TelephonyManager telephonyManager = context.getSystemService(TelephonyManager.class);
+    if (telephonyManager.isEmergencyNumber(details.displayNumber)) {
       views.nameView.setText(R.string.emergency_number);
       views.nameView.setTextDirection(View.TEXT_DIRECTION_INHERIT);
       return;
@@ -198,24 +201,27 @@ public class PhoneCallDetailsHelper {
    * @return The call location and date string.
    */
   public CharSequence getCallLocationAndDate(PhoneCallDetails details) {
-    descriptionItems.clear();
+    synchronized (this) {
+      descriptionItems.clear();
 
-    if (details.callTypes[0] != Calls.VOICEMAIL_TYPE) {
-      // Get type of call (ie mobile, home, etc) if known, or the caller's location.
-      CharSequence callTypeOrLocation = getCallTypeOrLocation(details);
+      if (details.callTypes[0] != Calls.VOICEMAIL_TYPE) {
+        // Get type of call (ie mobile, home, etc) if known, or the caller's location.
+        CharSequence callTypeOrLocation = getCallTypeOrLocation(details);
 
-      // Only add the call type or location if its not empty.  It will be empty for unknown
-      // callers.
-      if (!TextUtils.isEmpty(callTypeOrLocation)) {
-        descriptionItems.add(callTypeOrLocation);
+        // Only add the call type or location if its not empty.  It will be empty for unknown
+        // callers.
+        if (!TextUtils.isEmpty(callTypeOrLocation)) {
+          descriptionItems.add(callTypeOrLocation);
+        }
       }
+
+      // The date of this call
+      descriptionItems.add(getCallDate(details));
+
+      // Create a comma separated list from the call type or location, and call date.
+
+      return DialerUtils.join(descriptionItems);
     }
-
-    // The date of this call
-    descriptionItems.add(getCallDate(details));
-
-    // Create a comma separated list from the call type or location, and call date.
-    return DialerUtils.join(descriptionItems);
   }
 
   /**

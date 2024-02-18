@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +19,7 @@ package com.android.voicemail.impl;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.os.PersistableBundle;
@@ -37,6 +39,7 @@ import com.android.voicemail.impl.protocol.VisualVoicemailProtocol;
 import com.android.voicemail.impl.protocol.VisualVoicemailProtocolFactory;
 import com.android.voicemail.impl.sms.StatusMessage;
 import com.android.voicemail.impl.sync.VvmAccountManager;
+
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
@@ -98,7 +101,7 @@ public class OmtpVvmCarrierConfigHelper {
   @Nullable
   private final PersistableBundle overrideConfig;
 
-  private PhoneAccountHandle phoneAccountHandle;
+  private final PhoneAccountHandle phoneAccountHandle;
 
   public OmtpVvmCarrierConfigHelper(Context context, @Nullable PhoneAccountHandle handle) {
     this.context = context;
@@ -157,10 +160,7 @@ public class OmtpVvmCarrierConfigHelper {
    * known protocol.
    */
   public boolean isValid() {
-    if (protocol == null) {
-      return false;
-    }
-    return true;
+    return protocol != null;
   }
 
   @Nullable
@@ -482,13 +482,13 @@ public class OmtpVvmCarrierConfigHelper {
     }
     for (String packageName : carrierPackages) {
       try {
-        ApplicationInfo info = getContext().getPackageManager().getApplicationInfo(packageName, 0);
+        ApplicationInfo info = getContext().getPackageManager().getApplicationInfo(packageName,
+                PackageManager.ApplicationInfoFlags.of(0));
         if (!info.enabled) {
           continue;
         }
         return true;
-      } catch (NameNotFoundException e) {
-        continue;
+      } catch (NameNotFoundException ignored) {
       }
     }
     return false;

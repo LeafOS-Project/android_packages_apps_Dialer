@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,11 +30,6 @@ import android.graphics.PorterDuff.Mode;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Trace;
-import android.support.v4.graphics.ColorUtils;
-import android.support.v4.view.animation.FastOutLinearInInterpolator;
-import android.support.v4.view.animation.FastOutSlowInInterpolator;
-import android.support.v4.view.animation.LinearOutSlowInInterpolator;
-import android.support.v4.view.animation.PathInterpolatorCompat;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -52,6 +48,11 @@ import androidx.annotation.FloatRange;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.ColorUtils;
+import androidx.core.view.animation.PathInterpolatorCompat;
+import androidx.interpolator.view.animation.FastOutLinearInInterpolator;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
+import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
 
 import com.android.dialer.R;
 import com.android.dialer.common.DpUtil;
@@ -760,29 +761,19 @@ public class FlingUpDownMethod extends AnswerMethod implements OnProgressChanged
     rejectTextShow.setStartDelay(SWIPE_TO_DECLINE_FADE_IN_DELAY_MILLIS);
 
     // reject hint text translate in
-    Animator rejectTextTranslateIn =
+    Animator rejectTextTranslate =
         ObjectAnimator.ofFloat(
             swipeToRejectText,
             View.TRANSLATION_Y,
             DpUtil.dpToPx(getContext(), HINT_REJECT_FADE_TRANSLATION_Y_DP),
             0f);
-    rejectTextTranslateIn.setInterpolator(new FastOutSlowInInterpolator());
-    rejectTextTranslateIn.setDuration(ANIMATE_DURATION_NORMAL_MILLIS);
+    rejectTextTranslate.setInterpolator(new FastOutSlowInInterpolator());
+    rejectTextTranslate.setDuration(ANIMATE_DURATION_NORMAL_MILLIS);
 
     // reject hint text fade out
     Animator rejectTextHide = ObjectAnimator.ofFloat(swipeToRejectText, View.ALPHA, 0f);
     rejectTextHide.setInterpolator(new FastOutLinearInInterpolator());
     rejectTextHide.setDuration(ANIMATE_DURATION_SHORT_MILLIS);
-
-    // reject hint text translate out
-    Animator rejectTextTranslateOut =
-        ObjectAnimator.ofFloat(
-            swipeToRejectText,
-            View.TRANSLATION_Y,
-            0f,
-            DpUtil.dpToPx(getContext(), HINT_REJECT_FADE_TRANSLATION_Y_DP));
-    rejectTextTranslateOut.setInterpolator(new FastOutSlowInInterpolator());
-    rejectTextTranslateOut.setDuration(ANIMATE_DURATION_NORMAL_MILLIS);
 
     Interpolator curve =
         PathInterpolatorCompat.create(
@@ -818,7 +809,6 @@ public class FlingUpDownMethod extends AnswerMethod implements OnProgressChanged
     breatheAnimation
         .play(textUp)
         .with(rejectTextHide)
-        .with(rejectTextTranslateOut)
         .with(puckUp)
         .with(puckScaleUp)
         .after(167 /* delay */);
@@ -829,7 +819,7 @@ public class FlingUpDownMethod extends AnswerMethod implements OnProgressChanged
         .with(textDown)
         .with(puckScaleDown)
         .with(rejectTextShow)
-        .with(rejectTextTranslateIn)
+        .with(rejectTextTranslate)
         .after(puckUp);
 
     // Add vibration animation to the animator set.
@@ -1147,8 +1137,8 @@ public class FlingUpDownMethod extends AnswerMethod implements OnProgressChanged
     private static final long RAMP_DOWN_END_MS = RAMP_DOWN_BEGIN_MS + RAMP_DOWN_DURATION_MS;
     private static final long RAMP_TOTAL_TIME_MS = RAMP_DOWN_END_MS;
     private final float ampMax;
-    private final float freqMax = 80;
-    private Interpolator sliderInterpolator = new FastOutSlowInInterpolator();
+    private static final float FREQ_MAX = 80;
+    private final Interpolator sliderInterpolator = new FastOutSlowInInterpolator();
 
     VibrateInterpolator(Context context) {
       ampMax = DpUtil.dpToPx(context, 1 /* dp */);
@@ -1178,7 +1168,7 @@ public class FlingUpDownMethod extends AnswerMethod implements OnProgressChanged
       }
 
       float ampNormalized = ampMax * slider;
-      float freqNormalized = freqMax * slider;
+      float freqNormalized = FREQ_MAX * slider;
 
       return (float) (ampNormalized * Math.sin(time * freqNormalized));
     }

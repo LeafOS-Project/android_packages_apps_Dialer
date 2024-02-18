@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +17,10 @@
 
 package com.android.dialer.main.impl;
 
-import android.app.Fragment;
-import android.app.FragmentTransaction;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.os.Bundle;
 import android.speech.RecognizerIntent;
-import android.support.design.widget.FloatingActionButton;
-import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
@@ -31,8 +28,13 @@ import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.AttrRes;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.android.contacts.common.dialog.ClearFrequentsDialog;
 import com.android.dialer.R;
@@ -40,7 +42,6 @@ import com.android.dialer.app.calllog.CallLogActivity;
 import com.android.dialer.app.settings.DialerSettingsActivity;
 import com.android.dialer.callintent.CallInitiationType;
 import com.android.dialer.common.LogUtil;
-import com.android.dialer.constants.ActivityRequestCodes;
 import com.android.dialer.dialpadview.DialpadFragment;
 import com.android.dialer.dialpadview.DialpadFragment.DialpadListener;
 import com.android.dialer.dialpadview.DialpadFragment.OnDialpadQueryChangedListener;
@@ -53,9 +54,11 @@ import com.android.dialer.searchfragment.list.NewSearchFragment.SearchFragmentLi
 import com.android.dialer.smartdial.util.SmartDialNameMatcher;
 import com.android.dialer.util.DialerUtils;
 import com.android.dialer.util.TransactionSafeActivity;
-import com.google.common.base.Optional;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Search controller for handling all the logic related to entering and exiting the search UI.
@@ -102,6 +105,8 @@ public class MainSearchController implements SearchBarListener {
   private DialpadFragment dialpadFragment;
   private NewSearchFragment searchFragment;
 
+  private final ActivityResultLauncher<Intent> mVoiceSearchLauncher;
+
   public MainSearchController(
       TransactionSafeActivity activity,
       BottomNavBar bottomNav,
@@ -114,10 +119,15 @@ public class MainSearchController implements SearchBarListener {
     this.toolbar = toolbar;
     this.fragmentContainer = fragmentContainer;
 
-    dialpadFragment =
-        (DialpadFragment) activity.getFragmentManager().findFragmentByTag(DIALPAD_FRAGMENT_TAG);
-    searchFragment =
-        (NewSearchFragment) activity.getFragmentManager().findFragmentByTag(SEARCH_FRAGMENT_TAG);
+    dialpadFragment = (DialpadFragment) activity.getSupportFragmentManager()
+            .findFragmentByTag(DIALPAD_FRAGMENT_TAG);
+    searchFragment = (NewSearchFragment) activity.getSupportFragmentManager()
+            .findFragmentByTag(SEARCH_FRAGMENT_TAG);
+
+    mVoiceSearchLauncher = activity.registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+              onVoiceResults(result.getResultCode(), result.getData());
+            });
   }
 
   /** Should be called if we're showing the dialpad because of a new ACTION_DIAL intent. */
@@ -149,11 +159,11 @@ public class MainSearchController implements SearchBarListener {
 
     fab.hide();
     toolbar.slideUp(animate, fragmentContainer);
-    toolbar.expand(animate, Optional.absent(), /* requestFocus */ false);
+    toolbar.expand(animate, Optional.empty(), /* requestFocus */ false);
 
     activity.setTitle(R.string.dialpad_activity_title);
 
-    FragmentTransaction transaction = activity.getFragmentManager().beginTransaction();
+    FragmentTransaction transaction = activity.getSupportFragmentManager().beginTransaction();
 
     // Show Search
     if (searchFragment == null) {
@@ -226,7 +236,10 @@ public class MainSearchController implements SearchBarListener {
           public void onAnimationEnd(Animation animation) {
             if (activity.isSafeToCommitTransactions()
                 && !(activity.isFinishing() || activity.isDestroyed())) {
-              activity.getFragmentManager().beginTransaction().hide(dialpadFragment).commit();
+              activity.getSupportFragmentManager()
+                      .beginTransaction()
+                      .hide(dialpadFragment)
+                      .commit();
             }
           }
 
@@ -322,7 +335,7 @@ public class MainSearchController implements SearchBarListener {
     showBottomNav();
     updateStatusBarColor(android.R.attr.statusBarColor);
     toolbar.collapse(animate);
-    activity.getFragmentManager().beginTransaction().hide(searchFragment).commit();
+    activity.getSupportFragmentManager().beginTransaction().hide(searchFragment).commit();
 
     // Clear the dialpad so the phone number isn't persisted between search sessions.
     if (dialpadFragment != null) {
@@ -376,7 +389,7 @@ public class MainSearchController implements SearchBarListener {
   @Override
   public void onSearchBarClicked() {
     LogUtil.enterBlock("MainSearchController.onSearchBarClicked");
-    openSearch(Optional.absent());
+    openSearch(Optional.empty());
   }
 
   private void openSearch(Optional<String> query) {
@@ -388,7 +401,7 @@ public class MainSearchController implements SearchBarListener {
     hideBottomNav();
     updateStatusBarColor(android.R.attr.colorBackgroundFloating);
 
-    FragmentTransaction transaction = activity.getFragmentManager().beginTransaction();
+    FragmentTransaction transaction = activity.getSupportFragmentManager().beginTransaction();
     // Show Search
     if (searchFragment == null) {
       searchFragment = NewSearchFragment.newInstance();
@@ -398,8 +411,7 @@ public class MainSearchController implements SearchBarListener {
       transaction.show(searchFragment);
     }
 
-    searchFragment.setQuery(
-        query.isPresent() ? query.get() : "", CallInitiationType.Type.REGULAR_SEARCH);
+    searchFragment.setQuery(query.orElse(""), CallInitiationType.Type.REGULAR_SEARCH);
 
     if (activity.isSafeToCommitTransactions()) {
       transaction.commit();
@@ -435,7 +447,7 @@ public class MainSearchController implements SearchBarListener {
   public void onVoiceButtonClicked(VoiceSearchResultCallback voiceSearchResultCallback) {
     try {
       Intent voiceIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-      activity.startActivityForResult(voiceIntent, ActivityRequestCodes.DIALTACTS_VOICE_SEARCH);
+      mVoiceSearchLauncher.launch(voiceIntent);
     } catch (ActivityNotFoundException e) {
       Toast.makeText(activity, R.string.voice_search_not_available, Toast.LENGTH_SHORT).show();
     }
@@ -447,7 +459,7 @@ public class MainSearchController implements SearchBarListener {
       activity.startActivity(new Intent(activity, DialerSettingsActivity.class));
       return true;
     } else if (menuItem.getItemId() == R.id.clear_frequents) {
-      ClearFrequentsDialog.show(activity.getFragmentManager());
+      ClearFrequentsDialog.show(activity.getSupportFragmentManager());
       return true;
     } else if (menuItem.getItemId() == R.id.menu_call_history) {
       final Intent intent = new Intent(activity, CallLogActivity.class);
@@ -527,7 +539,7 @@ public class MainSearchController implements SearchBarListener {
     if (savedInstanceState.getBoolean(KEY_IS_TOOLBAR_EXPANDED, false)) {
       // If the toolbar is slide up, that means the dialpad is showing. Thus we don't want to
       // request focus or we'll break physical/bluetooth keyboards typing.
-      toolbar.expand(/* animate */ false, Optional.absent(), /* requestFocus */ !isSlideUp);
+      toolbar.expand(/* animate */ false, Optional.empty(), /* requestFocus */ !isSlideUp);
     }
   }
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +18,12 @@ package com.android.contacts.common.list;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
+
+import androidx.preference.PreferenceManager;
+
 import com.android.contacts.common.model.AccountTypeManager;
 import com.android.contacts.common.model.account.AccountWithDataSet;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,8 +70,7 @@ public abstract class ContactListFilterController {
 class ContactListFilterControllerImpl extends ContactListFilterController {
 
   private final Context mAppContext;
-  private final List<ContactListFilterListener> mListeners =
-      new ArrayList<ContactListFilterListener>();
+  private final List<ContactListFilterListener> mListeners = new ArrayList<>();
   private ContactListFilter mFilter;
 
   public ContactListFilterControllerImpl(Context context) {

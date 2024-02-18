@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +24,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
-import android.support.v4.app.NotificationCompat;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.TelephonyManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
 import com.android.contacts.common.util.ContactDisplayUtils;
 import com.android.dialer.app.MainComponent;
@@ -43,6 +44,7 @@ import com.android.dialer.notification.NotificationManagerUtils;
 import com.android.dialer.phonenumbercache.ContactInfo;
 import com.android.dialer.telecom.TelecomUtil;
 import com.android.dialer.theme.base.ThemeComponent;
+
 import java.util.List;
 import java.util.Map;
 
@@ -89,11 +91,11 @@ final class VisualVoicemailNotifier {
     if (shouldAlert) {
       groupSummary.setOnlyAlertOnce(false);
       // Group summary will alert when posted/updated
-      groupSummary.setGroupAlertBehavior(Notification.GROUP_ALERT_ALL);
+      groupSummary.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_ALL);
     } else {
       // Only children will alert. but since all children are set to "only alert summary" it is
       // effectively silenced.
-      groupSummary.setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN);
+      groupSummary.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN);
     }
     PhoneAccountHandle handle = getAccountForCall(context, newCalls.get(0));
     groupSummary.setChannelId(NotificationChannelManager.getVoicemailChannelId(context, handle));
@@ -169,7 +171,7 @@ final class VisualVoicemailNotifier {
     }
 
     builder.setChannelId(NotificationChannelManager.getVoicemailChannelId(context, handle));
-    builder.setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY);
+    builder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY);
 
     ContactPhotoLoader loader = new ContactPhotoLoader(context, contactInfo);
     Bitmap photoIcon = loader.loadPhotoIcon();
@@ -223,7 +225,8 @@ final class VisualVoicemailNotifier {
     if (voicemail != null) {
       intent.setData(voicemail.voicemailUri);
     }
-    return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    return PendingIntent.getActivity(context, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
   }
 
   /**

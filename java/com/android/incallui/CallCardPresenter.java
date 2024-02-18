@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,15 +21,13 @@ import static com.android.contacts.common.compat.CallCompat.Details.PROPERTY_ENT
 
 import android.Manifest;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.hardware.display.DisplayManager;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Trace;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
 import android.telecom.Call.Details;
 import android.telecom.StatusHints;
 import android.telecom.TelecomManager;
@@ -41,6 +40,8 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityManager;
 
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 
 import com.android.contacts.common.ContactsUtils;
 import com.android.dialer.R;
@@ -71,6 +72,7 @@ import com.android.incallui.incall.protocol.PrimaryCallState.ButtonState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
 import com.android.incallui.incall.protocol.SecondaryInfo;
 import com.android.incallui.videotech.utils.SessionModificationState;
+
 import java.lang.ref.WeakReference;
 
 /**
@@ -93,15 +95,8 @@ public class CallCardPresenter
    */
   private static final long ACCESSIBILITY_ANNOUNCEMENT_DELAY_MILLIS = 500;
 
-  /**
-   * Make it possible to not get location during an emergency call if the battery is too low, since
-   * doing so could trigger gps and thus potentially cause the phone to die in the middle of the
-   * call.
-   */
-  private static final long CONFIG_MIN_BATTERY_PERCENT_FOR_EMERGENCY_LOCATION_DEFAULT = 10;
-
   private final Context context;
-  private final Handler handler = new Handler();
+  private final Handler handler = new Handler(Looper.getMainLooper());
 
   private DialerCall primary;
   private String primaryNumber;
@@ -502,26 +497,10 @@ public class CallCardPresenter
   }
 
   @Override
-  public void onCallStateButtonClicked() {
-    Intent broadcastIntent = Bindings.get(context).getCallStateButtonBroadcastIntent(context);
-    if (broadcastIntent != null) {
-      LogUtil.v(
-          "CallCardPresenter.onCallStateButtonClicked",
-          "sending call state button broadcast: " + broadcastIntent);
-      context.sendBroadcast(broadcastIntent, Manifest.permission.READ_PHONE_STATE);
-    }
-  }
-
-  @Override
   public void onManageConferenceClicked() {
     InCallActivity activity =
         (InCallActivity) (inCallScreen.getInCallScreenFragment().getActivity());
     activity.showConferenceFragment(true);
-  }
-
-  @Override
-  public void onShrinkAnimationComplete() {
-    InCallPresenter.getInstance().onShrinkAnimationComplete();
   }
 
   private void maybeStartSearch(DialerCall call, boolean isPrimary) {
@@ -781,8 +760,9 @@ public class CallCardPresenter
       // Return the label for the gateway app on outgoing calls.
       final PackageManager pm = context.getPackageManager();
       try {
-        ApplicationInfo info =
-            pm.getApplicationInfo(primary.getGatewayInfo().getGatewayProviderPackageName(), 0);
+        ApplicationInfo info = pm.getApplicationInfo(
+                primary.getGatewayInfo().getGatewayProviderPackageName(),
+                PackageManager.ApplicationInfoFlags.of(0));
         return pm.getApplicationLabel(info).toString();
       } catch (PackageManager.NameNotFoundException e) {
         LogUtil.e("CallCardPresenter.getConnectionLabel", "gateway Application Not Found.", e);
@@ -945,7 +925,7 @@ public class CallCardPresenter
       return false;
     }
 
-    AccessibilityEvent event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_ANNOUNCEMENT);
+    AccessibilityEvent event = new AccessibilityEvent(AccessibilityEvent.TYPE_ANNOUNCEMENT);
     inCallScreen.dispatchPopulateAccessibilityEvent(event);
     View view = inCallScreen.getInCallScreenFragment().getView();
     view.getParent().requestSendAccessibilityEvent(view, event);
@@ -1021,7 +1001,7 @@ public class CallCardPresenter
     private final boolean isPrimary;
 
     public ContactLookupCallback(CallCardPresenter callCardPresenter, boolean isPrimary) {
-      this.callCardPresenter = new WeakReference<CallCardPresenter>(callCardPresenter);
+      this.callCardPresenter = new WeakReference<>(callCardPresenter);
       this.isPrimary = isPrimary;
     }
 

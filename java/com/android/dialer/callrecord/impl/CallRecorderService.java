@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 The CyanogenMod Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,18 +30,15 @@ import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.provider.MediaStore;
 import android.text.TextUtils;
-import android.provider.Settings;
 import android.util.Log;
 
+import com.android.dialer.R;
 import com.android.dialer.callrecord.CallRecording;
 import com.android.dialer.callrecord.ICallRecorderService;
 
-import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
-import com.android.dialer.R;
 
 public class CallRecorderService extends Service {
   private static final String TAG = "CallRecorderService";
@@ -49,7 +47,7 @@ public class CallRecorderService extends Service {
   private MediaRecorder mMediaRecorder = null;
   private CallRecording mCurrentRecording = null;
 
-  private SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyMMdd_HHmmssSSS");
+  private final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyMMdd_HHmmssSSS");
 
   private final ICallRecorderService.Stub mBinder = new ICallRecorderService.Stub() {
     @Override
@@ -122,7 +120,7 @@ public class CallRecorderService extends Service {
 
     if (DBG) Log.d(TAG, "Starting recording");
 
-    mMediaRecorder = new MediaRecorder();
+    mMediaRecorder = new MediaRecorder(getApplicationContext());
     try {
       int audioSource = getAudioSource();
       int formatChoice = getAudioFormatChoice();

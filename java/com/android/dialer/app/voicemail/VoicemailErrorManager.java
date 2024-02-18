@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@ import android.content.Context;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.os.Handler;
+import android.os.Looper;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
@@ -38,6 +40,7 @@ import com.android.dialer.voicemail.listui.error.VoicemailErrorMessageCreator;
 import com.android.dialer.voicemail.listui.error.VoicemailStatus;
 import com.android.dialer.voicemail.listui.error.VoicemailStatusReader;
 import com.android.voicemail.VoicemailComponent;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +58,7 @@ public class VoicemailErrorManager implements CallLogQueryHandler.Listener, Voic
   private final Map<PhoneAccountHandle, ServiceStateListener> listeners = new ArrayMap<>();
 
   private final ContentObserver statusObserver =
-      new ContentObserver(new Handler()) {
+      new ContentObserver(new Handler(Looper.getMainLooper())) {
         @Override
         public void onChange(boolean selfChange) {
           super.onChange(selfChange);
