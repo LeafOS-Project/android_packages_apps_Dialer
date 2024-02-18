@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +31,6 @@ import android.content.SyncStatusObserver;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -40,6 +40,7 @@ import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
+
 import com.android.contacts.common.MoreContactUtils;
 import com.android.contacts.common.list.ContactListFilterController;
 import com.android.contacts.common.model.account.AccountType;
@@ -52,6 +53,7 @@ import com.android.contacts.common.model.account.GoogleAccountType;
 import com.android.contacts.common.model.account.SamsungAccountType;
 import com.android.contacts.common.model.dataitem.DataKind;
 import com.android.contacts.common.util.Constants;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -63,6 +65,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -160,8 +164,7 @@ class AccountTypeManagerImpl extends AccountTypeManager
     implements OnAccountsUpdateListener, SyncStatusObserver {
 
   private static final Map<AccountTypeWithDataSet, AccountType>
-      EMPTY_UNMODIFIABLE_ACCOUNT_TYPE_MAP =
-          Collections.unmodifiableMap(new HashMap<AccountTypeWithDataSet, AccountType>());
+      EMPTY_UNMODIFIABLE_ACCOUNT_TYPE_MAP = Collections.unmodifiableMap(new HashMap<>());
 
   /**
    * A sample contact URI used to test whether any activities will respond to an invitable intent
@@ -172,37 +175,33 @@ class AccountTypeManagerImpl extends AccountTypeManager
 
   private static final int MESSAGE_LOAD_DATA = 0;
   private static final int MESSAGE_PROCESS_BROADCAST_INTENT = 1;
-  private static final Comparator<AccountWithDataSet> ACCOUNT_COMPARATOR =
-      new Comparator<AccountWithDataSet>() {
-        @Override
-        public int compare(AccountWithDataSet a, AccountWithDataSet b) {
-          if (Objects.equals(a.name, b.name)
-              && Objects.equals(a.type, b.type)
-              && Objects.equals(a.dataSet, b.dataSet)) {
-            return 0;
-          } else if (b.name == null || b.type == null) {
-            return -1;
-          } else if (a.name == null || a.type == null) {
-            return 1;
-          } else {
-            int diff = a.name.compareTo(b.name);
-            if (diff != 0) {
-              return diff;
-            }
-            diff = a.type.compareTo(b.type);
-            if (diff != 0) {
-              return diff;
-            }
+  private static final Comparator<AccountWithDataSet> ACCOUNT_COMPARATOR = (a, b) -> {
+    if (Objects.equals(a.name, b.name)
+        && Objects.equals(a.type, b.type)
+        && Objects.equals(a.dataSet, b.dataSet)) {
+      return 0;
+    } else if (b.name == null || b.type == null) {
+      return -1;
+    } else if (a.name == null || a.type == null) {
+      return 1;
+    } else {
+      int diff = a.name.compareTo(b.name);
+      if (diff != 0) {
+        return diff;
+      }
+      diff = a.type.compareTo(b.type);
+      if (diff != 0) {
+        return diff;
+      }
 
-            // Accounts without data sets get sorted before those that have them.
-            if (a.dataSet != null) {
-              return b.dataSet == null ? 1 : a.dataSet.compareTo(b.dataSet);
-            } else {
-              return -1;
-            }
-          }
-        }
-      };
+      // Accounts without data sets get sorted before those that have them.
+      if (a.dataSet != null) {
+        return b.dataSet == null ? 1 : a.dataSet.compareTo(b.dataSet);
+      } else {
+        return -1;
+      }
+    }
+  };
   private final InvitableAccountTypeCache mInvitableAccountTypeCache;
   /**
    * The boolean value is equal to true if the {@link InvitableAccountTypeCache} has been
@@ -216,7 +215,7 @@ class AccountTypeManagerImpl extends AccountTypeManager
   private final AtomicBoolean mInvitablesTaskIsRunning = new AtomicBoolean(false);
 
   private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
-  private Context mContext;
+  private final Context mContext;
   private final Runnable mCheckFilterValidityRunnable =
       new Runnable() {
         @Override
@@ -224,17 +223,17 @@ class AccountTypeManagerImpl extends AccountTypeManager
           ContactListFilterController.getInstance(mContext).checkFilterValidity(true);
         }
       };
-  private AccountManager mAccountManager;
-  private AccountType mFallbackAccountType;
+  private final AccountManager mAccountManager;
+  private final AccountType mFallbackAccountType;
   private List<AccountWithDataSet> mAccounts = new ArrayList<>();
   private List<AccountWithDataSet> mContactWritableAccounts = new ArrayList<>();
   private List<AccountWithDataSet> mGroupWritableAccounts = new ArrayList<>();
   private Map<AccountTypeWithDataSet, AccountType> mAccountTypesWithDataSets = new ArrayMap<>();
   private Map<AccountTypeWithDataSet, AccountType> mInvitableAccountTypes =
       EMPTY_UNMODIFIABLE_ACCOUNT_TYPE_MAP;
-  private HandlerThread mListenerThread;
-  private Handler mListenerHandler;
-  private BroadcastReceiver mBroadcastReceiver =
+  private final HandlerThread mListenerThread;
+  private final Handler mListenerHandler;
+  private final BroadcastReceiver mBroadcastReceiver =
       new BroadcastReceiver() {
 
         @Override
@@ -521,9 +520,9 @@ class AccountTypeManagerImpl extends AccountTypeManager
       }
     }
 
-    Collections.sort(allAccounts, ACCOUNT_COMPARATOR);
-    Collections.sort(contactWritableAccounts, ACCOUNT_COMPARATOR);
-    Collections.sort(groupWritableAccounts, ACCOUNT_COMPARATOR);
+    allAccounts.sort(ACCOUNT_COMPARATOR);
+    contactWritableAccounts.sort(ACCOUNT_COMPARATOR);
+    groupWritableAccounts.sort(ACCOUNT_COMPARATOR);
 
     synchronized (this) {
       mAccountTypesWithDataSets = accountTypesByTypeAndDataSet;
@@ -698,8 +697,8 @@ class AccountTypeManagerImpl extends AccountTypeManager
         result.remove(accountTypeWithDataSet);
         continue;
       }
-      ResolveInfo resolveInfo =
-          packageManager.resolveActivity(invitableIntent, PackageManager.MATCH_DEFAULT_ONLY);
+      ResolveInfo resolveInfo = packageManager.resolveActivity(invitableIntent,
+              PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY));
       if (resolveInfo == null) {
         // If we can't find an activity to start for this intent, then there's no point in
         // showing this option to the user.
@@ -775,18 +774,20 @@ class AccountTypeManagerImpl extends AccountTypeManager
    * the list of all potential invitable account types. Once the work is completed, the list of
    * account types is stored in the {@link AccountTypeManager}'s {@link InvitableAccountTypeCache}.
    */
-  private class FindInvitablesTask
-      extends AsyncTask<Void, Void, Map<AccountTypeWithDataSet, AccountType>> {
+  private class FindInvitablesTask {
 
-    @Override
-    protected Map<AccountTypeWithDataSet, AccountType> doInBackground(Void... params) {
-      return findUsableInvitableAccountTypes(mContext);
-    }
+    private void execute() {
+      ExecutorService executor = Executors.newSingleThreadExecutor();
+      Handler handler = new Handler(Looper.getMainLooper());
 
-    @Override
-    protected void onPostExecute(Map<AccountTypeWithDataSet, AccountType> accountTypes) {
-      mInvitableAccountTypeCache.setCachedValue(accountTypes);
-      mInvitablesTaskIsRunning.set(false);
+      executor.execute(() -> {
+        final Map<AccountTypeWithDataSet, AccountType> accountTypes =
+                findUsableInvitableAccountTypes(mContext);
+        handler.post(() -> {
+          mInvitableAccountTypeCache.setCachedValue(accountTypes);
+          mInvitablesTaskIsRunning.set(false);
+        });
+      });
     }
   }
 }

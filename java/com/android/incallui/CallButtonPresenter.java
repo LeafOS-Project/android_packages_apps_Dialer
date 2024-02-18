@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +21,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.os.Bundle;
 import android.os.Trace;
 import android.os.Handler;
 import android.preference.PreferenceManager;
@@ -28,6 +28,11 @@ import android.support.v4.app.Fragment;
 import android.support.v4.os.UserManagerCompat;
 import android.telecom.CallAudioState;
 import android.telecom.PhoneAccountHandle;
+
+import androidx.core.os.UserManagerCompat;
+import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceManager;
+
 import com.android.contacts.common.compat.CallCompat;
 import com.android.dialer.R;
 import com.android.dialer.common.Assert;
@@ -75,7 +80,7 @@ public class CallButtonPresenter
   private PhoneAccountHandle otherAccount;
   private boolean isRecording = false;
 
-  private CallRecorder.RecordingProgressListener recordingProgressListener =
+  private final CallRecorder.RecordingProgressListener recordingProgressListener =
       new CallRecorder.RecordingProgressListener() {
     @Override
     public void onStartRecording() {
@@ -311,7 +316,7 @@ public class CallButtonPresenter
 
   @Override
   public void showDialpadClicked(boolean checked) {
-    LogUtil.v("CallButtonPresenter", "show dialpad " + String.valueOf(checked));
+    LogUtil.v("CallButtonPresenter", "show dialpad " + checked);
     getActivity().showDialpadFragment(checked /* show */, true /* animate */);
   }
 
@@ -559,12 +564,6 @@ public class CallButtonPresenter
     // TODO(a bug): If there is an RCS video share session, return true here
     return !call.can(CallCompat.Details.CAPABILITY_CANNOT_DOWNGRADE_VIDEO_TO_AUDIO);
   }
-
-  @Override
-  public void onSaveInstanceState(Bundle outState) {}
-
-  @Override
-  public void onRestoreInstanceState(Bundle savedInstanceState) {}
 
   @Override
   public void onCameraPermissionGranted() {

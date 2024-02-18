@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +18,21 @@
 package com.android.dialer.callstats;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.content.Intent;
-import android.net.Uri;
+import android.content.res.Resources;
 import android.provider.CallLog.Calls;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
-import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.QuickContactBadge;
 import android.widget.TextView;
 
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.android.dialer.R;
 import com.android.dialer.contactphoto.ContactPhotoManager;
 import com.android.dialer.contacts.displaypreference.ContactDisplayPreferences;
 import com.android.dialer.lettertile.LetterTileDrawable;
-import com.android.dialer.location.GeoUtil;
 import com.android.dialer.phonenumbercache.ContactInfoHelper;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
 import com.android.dialer.util.DialerUtils;
@@ -59,9 +59,8 @@ public final class CallStatsListItemViewHolder extends RecyclerView.ViewHolder
   public final TextView mPercentView;
   public final LinearColorBar mBarView;
 
-  private Context mContext;
-  private ContactInfoHelper mContactInfoHelper;
-  private final int mPhotoSize;
+  private final Context mContext;
+  private final ContactInfoHelper mContactInfoHelper;
 
   private CallStatsListItemViewHolder(View rootView,
       QuickContactBadge quickContactView,
@@ -88,20 +87,18 @@ public final class CallStatsListItemViewHolder extends RecyclerView.ViewHolder
     quickContactView.setPrioritizedMimeType(Phone.CONTENT_ITEM_TYPE);
 
     mContext = rootView.getContext();
-    mPhotoSize = mContext.getResources().getDimensionPixelSize(R.dimen.contact_photo_size);
     mContactInfoHelper = contactInfoHelper;
   }
 
-  public static CallStatsListItemViewHolder create(View view,
-      ContactInfoHelper contactInfoHelper) {
+  public static CallStatsListItemViewHolder create(View view, ContactInfoHelper contactInfoHelper) {
     return new CallStatsListItemViewHolder(view,
-        (QuickContactBadge) view.findViewById(R.id.quick_contact_photo),
+        view.findViewById(R.id.quick_contact_photo),
         view.findViewById(R.id.primary_action_view),
-        (TextView) view.findViewById(R.id.name),
-        (TextView) view.findViewById(R.id.number),
-        (TextView) view.findViewById(R.id.label),
-        (TextView) view.findViewById(R.id.percent),
-        (LinearColorBar) view.findViewById(R.id.percent_bar),
+        view.findViewById(R.id.name),
+        view.findViewById(R.id.number),
+        view.findViewById(R.id.label),
+        view.findViewById(R.id.percent),
+        view.findViewById(R.id.percent_bar),
         contactInfoHelper);
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 The LineageOS Project
+ * Copyright (C) 2019-2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,11 @@ package com.android.dialer.helplines;
 import static android.graphics.Paint.UNDERLINE_TEXT_FLAG;
 
 import android.app.ActionBar;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -44,6 +41,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.dialer.R;
 import com.android.dialer.app.calllog.IntentProvider;
@@ -55,7 +55,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HelplineActivity extends Activity {
+public class HelplineActivity extends AppCompatActivity {
 
     public static final String SHARED_PREFERENCES_KEY = "com.android.dialer.prefs";
 
@@ -140,8 +140,7 @@ public class HelplineActivity extends Activity {
                 .setTitle(R.string.helplines_help_title)
                 .setMessage(R.string.helplines_help_message)
                 .setPositiveButton(android.R.string.ok, null)
-                .setNeutralButton(R.string.helpline_button_more, (dialog, which) -> {
-                    showMoreInfo(); })
+                .setNeutralButton(R.string.helpline_button_more, (dialog, which) -> showMoreInfo())
                 .show();
     }
 
@@ -158,7 +157,7 @@ public class HelplineActivity extends Activity {
                 Context.MODE_PRIVATE);
     }
 
-    private LoadHelplinesTask.Callback mCallback = new LoadHelplinesTask.Callback () {
+    private final LoadHelplinesTask.Callback mCallback = new LoadHelplinesTask.Callback () {
         @Override
         public void onLoadListProgress(int progress) {
             mProgressBar.setProgress(progress);
@@ -176,7 +175,7 @@ public class HelplineActivity extends Activity {
         }
     };
 
-    private HelplineAdapter.Listener mListener = new HelplineAdapter.Listener() {
+    private final HelplineAdapter.Listener mListener = new HelplineAdapter.Listener() {
         private AlertDialog mDialog;
 
         @Override

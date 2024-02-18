@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,13 +30,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.provider.BlockedNumberContract;
 import android.provider.CallLog;
 import android.provider.CallLog.Calls;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
-import android.support.v7.widget.CardView;
-import android.support.v7.widget.RecyclerView;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
@@ -45,23 +43,24 @@ import android.telephony.TelephonyManager;
 import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
-import android.view.ContextMenu;
 import android.transition.TransitionManager;
-import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.DecelerateInterpolator;
+import android.view.ContextMenu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresPermission;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.contacts.common.dialog.CallSubjectDialog;
-import com.android.dialer.app.R;
+import com.android.dialer.R;
 import com.android.dialer.app.calllog.CallLogAdapter.OnActionModeStateChangedListener;
 import com.android.dialer.app.calllog.calllogcache.CallLogCache;
 import com.android.dialer.app.voicemail.VoicemailPlaybackLayout;
@@ -72,7 +71,6 @@ import com.android.dialer.calllogutils.CallbackActionHelper.CallbackAction;
 import com.android.dialer.clipboard.ClipboardUtils;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.common.concurrent.AsyncTaskExecutors;
-import com.android.dialer.constants.ActivityRequestCodes;
 import com.android.dialer.contactphoto.ContactPhotoManager;
 import com.android.dialer.dialercontact.DialerContact;
 import com.android.dialer.dialercontact.SimDetails;
@@ -88,8 +86,7 @@ import com.android.dialer.telecom.TelecomUtil;
 import com.android.dialer.util.CallUtil;
 import com.android.dialer.util.DialerUtils;
 import com.android.dialer.util.UriUtils;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+
 import java.lang.ref.WeakReference;
 
 /**
@@ -130,7 +127,6 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
   private final CachedNumberLookupService cachedNumberLookupService;
   private final VoicemailPlaybackPresenter voicemailPlaybackPresenter;
   private final OnClickListener blockReportListener;
-  @HostUi private final int hostUi;
   /** Whether the data fields are populated by the worker thread, ready to be shown. */
   public boolean isLoaded;
   /** The view containing call log item actions. Null until the ViewStub is inflated. */
@@ -150,8 +146,8 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
   public View detailsButtonView;
   public View callWithNoteButtonView;
   public View sendVoicemailButtonView;
-  public ImageView workIconView;
-  public ImageView checkBoxView;
+  public final ImageView workIconView;
+  public final ImageView checkBoxView;
   /**
    * The row Id for the first call associated with the call log entry. Used as a key for the map
    * used to track which call log entries have the action button section expanded.
@@ -217,7 +213,7 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
   /** Whether the current log entry is a spam number or not. */
   public boolean isSpam;
 
-  private View.OnClickListener expandCollapseListener;
+  private final View.OnClickListener expandCollapseListener;
   private final OnActionModeStateChangedListener onActionModeStateChangedListener;
   private final View.OnLongClickListener longPressListener;
   private boolean voicemailPrimaryActionButtonClicked;
@@ -227,7 +223,7 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
   public CharSequence dayGroupHeaderText;
   public boolean isAttachedToWindow;
 
-  public AsyncTask<Void, Void, ?> asyncTask;
+  public CallLogAdapter.LoadDataTaskInterface asyncTask;
   private CallDetailsEntries callDetailsEntries;
 
   private CallLogListItemViewHolder(
@@ -269,20 +265,12 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
     this.callLogEntryView = callLogEntryView;
     this.dayGroupHeader = dayGroupHeader;
     this.primaryActionButtonView = primaryActionButtonView;
-    this.workIconView = (ImageView) rootView.findViewById(R.id.work_profile_icon);
-    this.checkBoxView = (ImageView) rootView.findViewById(R.id.quick_contact_checkbox);
+    this.workIconView = rootView.findViewById(R.id.work_profile_icon);
+    this.checkBoxView = rootView.findViewById(R.id.quick_contact_checkbox);
 
     // Set text height to false on the TextViews so they don't have extra padding.
     phoneCallDetailsViews.nameView.setElegantTextHeight(false);
     phoneCallDetailsViews.callLocationAndDate.setElegantTextHeight(false);
-
-    if (this.context instanceof CallLogActivity) {
-      hostUi = HostUi.CALL_HISTORY;
-    } else if (this.voicemailPlaybackPresenter == null) {
-      hostUi = HostUi.CALL_LOG;
-    } else {
-      hostUi = HostUi.VOICEMAIL;
-    }
 
     quickContactView.setOverlay(null);
     quickContactView.setPrioritizedMimeType(Phone.CONTENT_ITEM_TYPE);
@@ -493,7 +481,7 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
     videoCallButtonView.setVisibility(View.GONE);
 
     // For an emergency number, show "Call details" only.
-    if (PhoneNumberHelper.isLocalEmergencyNumber(context, number)) {
+    if (PhoneNumberHelper.isEmergencyNumber(context, number)) {
       createNewContactButtonView.setVisibility(View.GONE);
       addToExistingContactButtonView.setVisibility(View.GONE);
       sendMessageView.setVisibility(View.GONE);
@@ -897,14 +885,8 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
       return;
     }
     if (OldCallDetailsActivity.isLaunchIntent(intent)) {
-      ((Activity) context)
-          .startActivityForResult(intent, ActivityRequestCodes.DIALTACTS_CALL_DETAILS);
+      ((Activity) context).startActivity(intent);
     } else {
-      if (Intent.ACTION_CALL.equals(intent.getAction())
-          && intent.getIntExtra(TelecomManager.EXTRA_START_CALL_WITH_VIDEO_STATE, -1)
-              == VideoProfile.STATE_BIDIRECTIONAL) {
-      }
-
       DialerUtils.startActivityWithErrorToast(context, intent);
     }
   }
@@ -965,11 +947,11 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
     blockView.setVisibility(View.GONE);
     unblockView.setVisibility(View.GONE);
     reportNotSpamView.setVisibility(View.GONE);
-    String e164Number = PhoneNumberUtils.formatNumberToE164(number, countryIso);
+
     if (!canPlaceCallToNumber
         || isVoicemailNumber
         || !BlockedNumberContract.canCurrentUserBlockNumbers(context)
-        || PhoneNumberUtils.isEmergencyNumber(e164Number)) {
+        || PhoneNumberHelper.isEmergencyNumber(context, number, countryIso)) {
       return;
     }
 
@@ -1022,13 +1004,12 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
           .setOnMenuItemClickListener(this);
     }
 
-    String e164Number = PhoneNumberUtils.formatNumberToE164(number, countryIso);
     boolean isVoicemailNumber = callLogCache.isVoicemailNumber(accountHandle, number);
     boolean canPlaceCallToNumber = PhoneNumberHelper.canPlaceCallsTo(number, numberPresentation);
     if (canPlaceCallToNumber
         && !isVoicemailNumber
         && BlockedNumberContract.canCurrentUserBlockNumbers(context)
-            && !PhoneNumberUtils.isEmergencyNumber(e164Number)) {
+            && !PhoneNumberHelper.isEmergencyNumber(context, number, countryIso)) {
       if (isBlocked) {
         menu.add(
                 ContextMenu.NONE,
@@ -1050,15 +1031,6 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
       menu.add(ContextMenu.NONE, R.id.context_menu_delete, ContextMenu.NONE, R.string.delete)
           .setOnMenuItemClickListener(this);
     }
-  }
-
-  /** Specifies where the view holder belongs. */
-  @IntDef({HostUi.CALL_LOG, HostUi.CALL_HISTORY, HostUi.VOICEMAIL})
-  @Retention(RetentionPolicy.SOURCE)
-  private @interface HostUi {
-    int CALL_LOG = 0;
-    int CALL_HISTORY = 1;
-    int VOICEMAIL = 2;
   }
 
   public interface OnClickListener {
@@ -1093,7 +1065,7 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
         ContactSource.Type contactSourceType);
   }
 
-  private static class DeleteCallTask extends AsyncTask<Void, Void, Void> {
+  private static class DeleteCallTask implements Runnable {
     // Using a weak reference to hold the Context so that there is no memory leak.
     private final WeakReference<Context> contextWeakReference;
 
@@ -1104,15 +1076,15 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
       this.callIdsStr = concatCallIds(callIdsArray);
     }
 
-    @Override
     // Suppress the lint check here as the user will not be able to see call log entries if
     // permission.WRITE_CALL_LOG is not granted.
     @SuppressLint("MissingPermission")
     @RequiresPermission(value = permission.WRITE_CALL_LOG)
-    protected Void doInBackground(Void... params) {
+    @Override
+    public void run() {
       Context context = contextWeakReference.get();
       if (context == null) {
-        return null;
+        return;
       }
 
       if (callIdsStr != null) {
@@ -1126,12 +1098,7 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
             .getContentResolver()
             .notifyChange(Calls.CONTENT_URI, null);
       }
-
-      return null;
     }
-
-    @Override
-    public void onPostExecute(Void result) {}
 
     private String concatCallIds(long[] callIds) {
       if (callIds == null || callIds.length == 0) {

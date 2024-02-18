@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@ import androidx.annotation.WorkerThread;
 
 import com.android.dialer.proguard.UsedByReflection;
 import com.android.voicemail.impl.Assert;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -159,7 +161,7 @@ public abstract class BaseTask implements Task {
   public void onCreate(Context context, Bundle extras) {
     this.context = context;
     this.extras = extras;
-    phoneAccountHandle = extras.getParcelable(EXTRA_PHONE_ACCOUNT_HANDLE);
+    phoneAccountHandle = extras.getParcelable(EXTRA_PHONE_ACCOUNT_HANDLE, PhoneAccountHandle.class);
     for (Policy policy : policies) {
       policy.onCreate(this, extras);
     }

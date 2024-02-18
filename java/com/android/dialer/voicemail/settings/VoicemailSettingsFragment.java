@@ -1,26 +1,25 @@
-/**
+/*
  * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
- * <p>Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
- * except in compliance with the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * <p>http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * <p>Unless required by applicable law or agreed to in writing, software distributed under the
- * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing permissions and
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
  * limitations under the License
  */
+
 package com.android.dialer.voicemail.settings;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.preference.Preference;
-import android.preference.Preference.OnPreferenceClickListener;
-import android.preference.PreferenceScreen;
-import android.preference.SwitchPreference;
 import android.provider.Settings;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
@@ -30,9 +29,12 @@ import android.telephony.TelephonyManager;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceScreen;
+import androidx.preference.SwitchPreferenceCompat;
 
 import com.android.dialer.R;
-import com.android.dialer.app.settings.DialerPreferenceFragment;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.notification.NotificationChannelManager;
@@ -40,15 +42,16 @@ import com.android.dialer.telecom.TelecomUtil;
 import com.android.voicemail.VoicemailClient;
 import com.android.voicemail.VoicemailClient.ActivationStateListener;
 import com.android.voicemail.VoicemailComponent;
-import com.google.common.base.Optional;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Optional;
 
 /**
  * Fragment for voicemail settings. Requires {@link VoicemailClient#PARAM_PHONE_ACCOUNT_HANDLE} set
  * in arguments.
  */
-public class VoicemailSettingsFragment extends DialerPreferenceFragment
+public class VoicemailSettingsFragment extends PreferenceFragmentCompat
     implements Preference.OnPreferenceChangeListener, ActivationStateListener {
 
   // Extras copied from com.android.phone.settings.VoicemailSettingsActivity,
@@ -67,8 +70,8 @@ public class VoicemailSettingsFragment extends DialerPreferenceFragment
   private Preference voicemailNotificationPreference;
   private PreferenceScreen advancedSettingsPreference;
   // Settings that are supported by dialer only if the carrier configurations are valid.
-  private SwitchPreference visualVoicemailPreference;
-  private SwitchPreference voicemailAutoArchivePreference;
+  private SwitchPreferenceCompat visualVoicemailPreference;
+  private SwitchPreferenceCompat voicemailAutoArchivePreference;
   private Preference voicemailChangePinPreference;
 
   @Override
@@ -77,6 +80,11 @@ public class VoicemailSettingsFragment extends DialerPreferenceFragment
     phoneAccountHandle =
         Assert.isNotNull(getArguments().getParcelable(VoicemailClient.PARAM_PHONE_ACCOUNT_HANDLE));
     voicemailClient = VoicemailComponent.get(getContext()).getVoicemailClient();
+  }
+
+  @Override
+  public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
+
   }
 
   @Override
@@ -150,11 +158,11 @@ public class VoicemailSettingsFragment extends DialerPreferenceFragment
     advancedSettingsPreference.setOrder(VMSettingOrdering.ADVANCED_SETTING);
 
     visualVoicemailPreference =
-        (SwitchPreference) findPreference(getString(R.string.voicemail_visual_voicemail_key));
+        (SwitchPreferenceCompat) findPreference(getString(R.string.voicemail_visual_voicemail_key));
     visualVoicemailPreference.setOrder(VMSettingOrdering.VISUAL_VOICEMAIL);
 
     voicemailAutoArchivePreference =
-        (SwitchPreference)
+        (SwitchPreferenceCompat)
             findPreference(getString(R.string.voicemail_visual_voicemail_archive_key));
     voicemailAutoArchivePreference.setOrder(VMSettingOrdering.VOICEMAIL_AUTO_ARCHIVE);
 
@@ -298,26 +306,16 @@ public class VoicemailSettingsFragment extends DialerPreferenceFragment
     AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
     builder.setTitle(R.string.confirm_disable_voicemail_dialog_title);
     builder.setMessage(R.string.confirm_disable_voicemail_dialog_message);
-    builder.setPositiveButton(
-        R.string.confirm_disable_voicemail_accept_dialog_label,
-        new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-            LogUtil.i(TAG, "showDisableConfirmationDialog, confirmed");
-            updateVoicemailEnabled(false);
-            dialog.dismiss();
-          }
-        });
-
-    builder.setNegativeButton(
-        android.R.string.cancel,
-        new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog, int which) {
-            LogUtil.i(TAG, "showDisableConfirmationDialog, cancelled");
-            dialog.dismiss();
-          }
-        });
+    builder.setPositiveButton(R.string.confirm_disable_voicemail_accept_dialog_label,
+            (dialog, which) -> {
+      LogUtil.i(TAG, "showDisableConfirmationDialog, confirmed");
+      updateVoicemailEnabled(false);
+      dialog.dismiss();
+    });
+    builder.setNegativeButton(android.R.string.cancel, (dialog, which) -> {
+      LogUtil.i(TAG, "showDisableConfirmationDialog, cancelled");
+      dialog.dismiss();
+    });
 
     builder.setCancelable(true);
     builder.show();

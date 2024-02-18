@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 The CyanogenMod Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,15 +20,17 @@ package com.android.incallui;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
+import android.os.VibrationEffect;
 import android.os.Vibrator;
-import android.preference.PreferenceManager;
+import android.os.VibratorManager;
 import android.telecom.DisconnectCause;
 
+import com.android.incallui.InCallPresenter.InCallState;
 import com.android.incallui.call.CallList;
 import com.android.incallui.call.DialerCall;
 import com.android.incallui.call.state.DialerCallState;
-import com.android.incallui.InCallPresenter.InCallState;
 
 public class InCallVibrationHandler extends Handler implements
     InCallPresenter.InCallStateListener {
@@ -39,15 +42,16 @@ public class InCallVibrationHandler extends Handler implements
   private static final String KEY_VIBRATE_45SECS = "incall_vibrate_45secs";
   private static final String KEY_VIBRATE_HANGUP = "incall_vibrate_hangup";
 
-  private SharedPreferences prefs;
-  private Vibrator vibrator;
+  private final SharedPreferences prefs;
+  private final Vibrator vibrator;
   private DialerCall activeCall;
 
   public InCallVibrationHandler(Context context) {
+    super(Looper.getMainLooper());
+    String name = context.getPackageName() + "_preferences";
     prefs = context.createDeviceProtectedStorageContext()
-            .getSharedPreferences(PreferenceManager.getDefaultSharedPreferencesName(context),
-                    Context.MODE_PRIVATE);
-    vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            .getSharedPreferences(name, Context.MODE_PRIVATE);
+    vibrator = context.getSystemService(VibratorManager.class).getDefaultVibrator();
   }
 
   @Override
@@ -140,6 +144,7 @@ public class InCallVibrationHandler extends Handler implements
     long[] pattern = new long[] {
       0, v1, p1, v2
     };
-    vibrator.vibrate(pattern, -1);
+    VibrationEffect effect = VibrationEffect.createWaveform(pattern, -1);
+    vibrator.vibrate(effect);
   }
 }

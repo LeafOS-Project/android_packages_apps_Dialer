@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 The CyanogenMod Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -143,7 +144,7 @@ public class LookupUtils {
     Pattern pattern = Pattern.compile(regex, dotall ? Pattern.DOTALL : 0);
     Matcher matcher = pattern.matcher(input);
 
-    List<String> regexResults = new ArrayList<String>();
+    List<String> regexResults = new ArrayList<>();
     while (matcher.find()) {
       regexResults.add(matcher.group(1).trim());
     }
@@ -163,6 +164,6 @@ public class LookupUtils {
     if (input == null) {
       return null;
     }
-    return Html.fromHtml(input).toString().trim();
+    return Html.fromHtml(input, Html.FROM_HTML_MODE_LEGACY).toString().trim();
   }
 }

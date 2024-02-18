@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +26,6 @@ import android.content.res.ColorStateList;
 import android.graphics.PorterDuff.Mode;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.support.design.widget.BottomSheetDialogFragment;
 import android.telecom.CallAudioState;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -35,6 +35,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.core.widget.TextViewCompat;
 
 import com.android.dialer.R;
 import com.android.dialer.common.FragmentUtils;
@@ -42,6 +43,7 @@ import com.android.dialer.common.LogUtil;
 import com.android.dialer.theme.base.ThemeComponent;
 import com.android.incallui.call.TelecomAdapter;
 import com.android.incallui.util.BluetoothUtil;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 import java.util.Collection;
 
@@ -93,7 +95,7 @@ public class AudioRouteSelectorDialogFragment extends BottomSheetDialogFragment 
   public View onCreateView(
       LayoutInflater layoutInflater, @Nullable ViewGroup viewGroup, @Nullable Bundle bundle) {
     View view = layoutInflater.inflate(R.layout.audioroute_selector, viewGroup, false);
-    CallAudioState audioState = getArguments().getParcelable(ARG_AUDIO_STATE);
+    CallAudioState audioState = getArguments().getParcelable(ARG_AUDIO_STATE, CallAudioState.class);
 
     // Create items for all connected Bluetooth devices
     Collection<BluetoothDevice> bluetoothDeviceSet = audioState.getSupportedBluetoothDevices();
@@ -107,15 +109,15 @@ public class AudioRouteSelectorDialogFragment extends BottomSheetDialogFragment 
     }
 
     initItem(
-        (TextView) view.findViewById(R.id.audioroute_speaker),
+        view.findViewById(R.id.audioroute_speaker),
         CallAudioState.ROUTE_SPEAKER,
         audioState);
     initItem(
-        (TextView) view.findViewById(R.id.audioroute_headset),
+        view.findViewById(R.id.audioroute_headset),
         CallAudioState.ROUTE_WIRED_HEADSET,
         audioState);
     initItem(
-        (TextView) view.findViewById(R.id.audioroute_earpiece),
+        view.findViewById(R.id.audioroute_earpiece),
         CallAudioState.ROUTE_EARPIECE,
         audioState);
 
@@ -176,10 +178,10 @@ public class AudioRouteSelectorDialogFragment extends BottomSheetDialogFragment 
 
   private void setColor(TextView item, boolean isSelected) {
     int color = isSelected
-            ? ThemeComponent.get(getContext()).theme().getColorAccent()
-            : getContext().getColor(R.color.nav_item);
+            ? ThemeComponent.get(requireContext()).theme().getColorAccent()
+            : requireContext().getColor(R.color.nav_item);
     item.setTextColor(color);
-    item.setCompoundDrawableTintList(ColorStateList.valueOf(color));
-    item.setCompoundDrawableTintMode(Mode.SRC_ATOP);
+    TextViewCompat.setCompoundDrawableTintList(item, ColorStateList.valueOf(color));
+    TextViewCompat.setCompoundDrawableTintMode(item, Mode.SRC_ATOP);
   }
 }

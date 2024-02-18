@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +19,11 @@ package com.android.dialer.precall.impl;
 
 import android.content.Context;
 import android.telephony.PhoneNumberUtils;
+
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.precall.impl.MalformedNumberRectifier.MalformedNumberHandler;
-import com.google.common.base.Optional;
+
+import java.util.Optional;
 
 /**
  * It is customary in UK to present numbers as "+44 (0) xx xxxx xxxx". This is actually a amalgam of
@@ -37,7 +40,7 @@ class UkRegionPrefixInInternationalFormatHandler implements MalformedNumberHandl
   @Override
   public Optional<String> handle(Context context, String number) {
     if (!PhoneNumberUtils.normalizeNumber(number).startsWith(MALFORMED_PREFIX)) {
-      return Optional.absent();
+      return Optional.empty();
     }
     LogUtil.i("UkRegionPrefixInInternationalFormatHandler.handle", "removing (0) in UK numbers");
 

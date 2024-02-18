@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +17,16 @@
 
 package com.android.incallui.incall.impl;
 
-import android.support.v4.util.ArrayMap;
 import android.util.ArraySet;
 
 import androidx.annotation.NonNull;
+import androidx.collection.ArrayMap;
 
 import com.android.dialer.common.Assert;
 import com.android.incallui.incall.protocol.InCallButtonIds;
 import com.android.incallui.incall.protocol.InCallButtonIdsExtension;
 import com.google.auto.value.AutoValue;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -32,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
 import javax.annotation.concurrent.Immutable;
 
 /**
@@ -109,16 +112,13 @@ final class MappedButtonConfig {
    */
   @NonNull
   public Comparator<Integer> getSlotComparator() {
-    return new Comparator<Integer>() {
-      @Override
-      public int compare(Integer lhs, Integer rhs) {
-        MappingInfo lhsInfo = lookupMappingInfo(lhs);
-        MappingInfo rhsInfo = lookupMappingInfo(rhs);
-        if (lhsInfo.getSlot() != rhsInfo.getSlot()) {
-          throw new IllegalArgumentException("lhs and rhs don't go in the same slot");
-        }
-        return lhsInfo.getSlotOrder() - rhsInfo.getSlotOrder();
+    return (lhs, rhs) -> {
+      MappingInfo lhsInfo = lookupMappingInfo(lhs);
+      MappingInfo rhsInfo = lookupMappingInfo(rhs);
+      if (lhsInfo.getSlot() != rhsInfo.getSlot()) {
+        throw new IllegalArgumentException("lhs and rhs don't go in the same slot");
       }
+      return lhsInfo.getSlotOrder() - rhsInfo.getSlotOrder();
     };
   }
 
@@ -133,13 +133,10 @@ final class MappedButtonConfig {
    */
   @NonNull
   public Comparator<Integer> getConflictComparator() {
-    return new Comparator<Integer>() {
-      @Override
-      public int compare(Integer lhs, Integer rhs) {
-        MappingInfo lhsInfo = lookupMappingInfo(lhs);
-        MappingInfo rhsInfo = lookupMappingInfo(rhs);
-        return lhsInfo.getConflictOrder() - rhsInfo.getConflictOrder();
-      }
+    return (lhs, rhs) -> {
+      MappingInfo lhsInfo = lookupMappingInfo(lhs);
+      MappingInfo rhsInfo = lookupMappingInfo(rhs);
+      return lhsInfo.getConflictOrder() - rhsInfo.getConflictOrder();
     };
   }
 

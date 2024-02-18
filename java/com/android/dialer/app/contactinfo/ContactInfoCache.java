@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@
 package com.android.dialer.app.contactinfo;
 
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.text.TextUtils;
@@ -29,6 +31,7 @@ import com.android.dialer.oem.CequintCallerIdManager;
 import com.android.dialer.phonenumbercache.ContactInfo;
 import com.android.dialer.phonenumbercache.ContactInfoHelper;
 import com.android.dialer.util.ExpirableCache;
+
 import java.lang.ref.WeakReference;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
@@ -66,6 +69,7 @@ public class ContactInfoCache {
     private final WeakReference<ContactInfoCache> contactInfoCacheWeakReference;
 
     public InnerHandler(WeakReference<ContactInfoCache> contactInfoCacheWeakReference) {
+      super(Looper.getMainLooper());
       this.contactInfoCacheWeakReference = contactInfoCacheWeakReference;
     }
 

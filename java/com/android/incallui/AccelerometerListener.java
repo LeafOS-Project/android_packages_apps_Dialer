@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +23,9 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
+
 import com.android.dialer.common.LogUtil;
 
 /**
@@ -42,8 +45,8 @@ public class AccelerometerListener {
   private static final int VERTICAL_DEBOUNCE = 100;
   private static final int HORIZONTAL_DEBOUNCE = 500;
   private static final double VERTICAL_ANGLE = 50.0;
-  private SensorManager sensorManager;
-  private Sensor sensor;
+  private final SensorManager sensorManager;
+  private final Sensor sensor;
   // mOrientation is the orientation value most recently reported to the client.
   private int orientation;
   // mPendingOrientation is the latest orientation computed based on the sensor value.
@@ -51,31 +54,30 @@ public class AccelerometerListener {
   // mOrientation.
   private int pendingOrientation;
   private OrientationListener listener;
-  Handler handler =
-      new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-          switch (msg.what) {
-            case ORIENTATION_CHANGED:
-              synchronized (this) {
-                orientation = pendingOrientation;
-                if (DEBUG) {
-                  LogUtil.d(
-                      TAG,
-                      "orientation: "
-                          + (orientation == ORIENTATION_HORIZONTAL
-                              ? "horizontal"
-                              : (orientation == ORIENTATION_VERTICAL ? "vertical" : "unknown")));
-                }
-                if (listener != null) {
-                  listener.orientationChanged(orientation);
-                }
-              }
-              break;
+  final Handler handler = new Handler(Looper.getMainLooper()) {
+    @Override
+    public void handleMessage(Message msg) {
+      switch (msg.what) {
+        case ORIENTATION_CHANGED:
+          synchronized (this) {
+            orientation = pendingOrientation;
+            if (DEBUG) {
+              LogUtil.d(
+                  TAG,
+                  "orientation: "
+                      + (orientation == ORIENTATION_HORIZONTAL
+                          ? "horizontal"
+                          : (orientation == ORIENTATION_VERTICAL ? "vertical" : "unknown")));
+            }
+            if (listener != null) {
+              listener.orientationChanged(orientation);
+            }
           }
-        }
-      };
-  SensorEventListener sensorListener =
+          break;
+      }
+    }
+  };
+  final SensorEventListener sensorListener =
       new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {

@@ -2,6 +2,7 @@
 
 <!--
   ~ Copyright (C) 2014 The CyanogenMod Project
+  ~ Copyright (C) 2023 The LineageOS Project
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -16,39 +17,44 @@
   ~ limitations under the License
   -->
 
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-    <SwitchPreference
-        android:key="enable_forward_lookup"
-        android:title="@string/enable_forward_lookup_title"
-        android:summary="@string/enable_forward_lookup_summary"
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <SwitchPreferenceCompat
         android:defaultValue="false"
-        android:persistent="false" />
+        android:key="enable_forward_lookup"
+        android:persistent="false"
+        android:summary="@string/enable_forward_lookup_summary"
+        android:title="@string/enable_forward_lookup_title" />
 
     <ListPreference
-        android:key="forward_lookup_provider"
-        android:title="@string/forward_lookup_provider_title"
+        android:dependency="enable_forward_lookup"
         android:entries="@array/forward_lookup_provider_names"
         android:entryValues="@array/forward_lookup_providers"
-        android:dependency="enable_forward_lookup"
+        android:key="forward_lookup_provider"
+        android:persistent="false"
         android:summary="%s"
-        android:persistent="false" />
+        android:title="@string/forward_lookup_provider_title"
+        app:iconSpaceReserved="false" />
 
-    <SwitchPreference
-        android:key="enable_reverse_lookup"
-        android:title="@string/enable_reverse_lookup_title"
-        android:summary="@string/enable_reverse_lookup_summary"
+    <SwitchPreferenceCompat
         android:defaultValue="false"
-        android:persistent="false" />
+        android:key="enable_reverse_lookup"
+        android:persistent="false"
+        android:summary="@string/enable_reverse_lookup_summary"
+        android:title="@string/enable_reverse_lookup_title" />
 
     <ListPreference
-        android:key="reverse_lookup_provider"
-        android:title="@string/reverse_lookup_provider_title"
+        android:dependency="enable_reverse_lookup"
         android:entries="@array/reverse_lookup_provider_names"
         android:entryValues="@array/reverse_lookup_providers"
-        android:dependency="enable_reverse_lookup"
+        android:key="reverse_lookup_provider"
+        android:persistent="false"
         android:summary="%s"
-        android:persistent="false" />
+        android:title="@string/reverse_lookup_provider_title"
+        app:iconSpaceReserved="false" />
 
-    <Preference android:summary="@string/lookup_disclaimer" />
+    <Preference
+        android:summary="@string/lookup_disclaimer"
+        app:iconSpaceReserved="false" />
 </PreferenceScreen>
 

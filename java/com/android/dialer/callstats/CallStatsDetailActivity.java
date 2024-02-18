@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
  * Copyright (C) 2013 Android Open Kang Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,21 +18,21 @@
 
 package com.android.dialer.callstats;
 
-import android.app.DialogFragment;
 import android.content.Intent;
 import android.content.res.Resources;
-import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.CallLog.Calls;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.view.View;
 import android.widget.QuickContactBadge;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import com.android.dialer.R;
 import com.android.dialer.app.AccountSelectionActivity;
@@ -49,6 +50,9 @@ import com.android.dialer.phonenumbercache.ContactInfoHelper;
 import com.android.dialer.phonenumberutil.PhoneNumberHelper;
 import com.android.dialer.util.CallUtil;
 import com.android.dialer.widget.LinearColorBar;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Activity to display detailed information about a callstat item
@@ -89,18 +93,21 @@ public class CallStatsDetailActivity extends AppCompatActivity implements
   private CallStatsDetails mTotalData;
   private String mNumber = null;
 
-  private class UpdateContactTask extends AsyncTask<String, Void, ContactInfo> {
-    @Override
-    protected ContactInfo doInBackground(String... strings) {
-      return mContactInfoHelper.lookupNumber(strings[0], strings[1]);
-    }
+  private class UpdateContactTask {
 
-    @Override
-    protected void onPostExecute(ContactInfo info) {
-      if (info != null) {
-        mData.updateFromInfo(info);
-        updateData();
-      }
+    private void execute(String number, String countryIso) {
+      ExecutorService executor = Executors.newSingleThreadExecutor();
+      Handler handler = new Handler(Looper.getMainLooper());
+
+      executor.execute(() -> {
+        final ContactInfo info = mContactInfoHelper.lookupNumber(number, countryIso);
+        handler.post(() -> {
+          if (info != null) {
+            mData.updateFromInfo(info);
+            updateData();
+          }
+        });
+      });
     }
   }
 
@@ -160,11 +167,11 @@ public class CallStatsDetailActivity extends AppCompatActivity implements
         R.string.call_stats_outgoing, Calls.OUTGOING_TYPE);
 
     Intent launchIntent = getIntent();
-    mData = (CallStatsDetails) launchIntent.getParcelableExtra(EXTRA_DETAILS);
-    mTotalData = (CallStatsDetails) launchIntent.getParcelableExtra(EXTRA_TOTAL);
+    mData = launchIntent.getParcelableExtra(EXTRA_DETAILS, CallStatsDetails.class);
+    mTotalData = launchIntent.getParcelableExtra(EXTRA_TOTAL, CallStatsDetails.class);
     updateData();
 
-    TextView dateFilterView = (TextView) findViewById(R.id.date_filter);
+    TextView dateFilterView = findViewById(R.id.date_filter);
     long filterFrom = launchIntent.getLongExtra(EXTRA_FROM, -1);
     if (filterFrom == -1) {
       dateFilterView.setVisibility(View.GONE);
@@ -177,11 +184,11 @@ public class CallStatsDetailActivity extends AppCompatActivity implements
   @Override
   public void onResume() {
     super.onResume();
-    new UpdateContactTask().execute(mData.number.toString(), mData.countryIso);
+    new UpdateContactTask().execute(mData.number, mData.countryIso);
   }
 
   private void updateData() {
-    mNumber = mData.number.toString();
+    mNumber = mData.number;
 
     // Cache the details about the phone number.
     boolean canPlaceCallsTo = PhoneNumberHelper.canPlaceCallsTo(mNumber, mData.numberPresentation);
@@ -300,10 +307,10 @@ public class CallStatsDetailActivity extends AppCompatActivity implements
   }
 
   private class DetailLine {
-    private int mValueTemplateResId;
-    private View mRootView;
-    private TextView mTextView;
-    private TextView mPercentView;
+    private final int mValueTemplateResId;
+    private final View mRootView;
+    private final TextView mTextView;
+    private final TextView mPercentView;
 
     public DetailLine(int rootViewId, int valueTemplateResId, int iconType) {
       mValueTemplateResId = valueTemplateResId;

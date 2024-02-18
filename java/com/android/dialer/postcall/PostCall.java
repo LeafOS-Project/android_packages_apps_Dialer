@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2017 The Android Open Source Project
- * Copyright (C) 2020 The LineageOS Project
+ * Copyright (C) 2020-2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.support.design.widget.BaseTransientBottomBar.BaseCallback;
-import android.support.design.widget.Snackbar;
 import android.telephony.TelephonyManager;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -37,6 +35,8 @@ import com.android.dialer.common.LogUtil;
 import com.android.dialer.storage.StorageComponent;
 import com.android.dialer.util.DialerUtils;
 import com.android.dialer.util.IntentUtil;
+import com.google.android.material.snackbar.BaseTransientBottomBar;
+import com.google.android.material.snackbar.Snackbar;
 
 import org.lineageos.lib.phone.SensitivePhoneNumbers;
 
@@ -89,7 +89,8 @@ public class PostCall {
         Snackbar.make(rootView, message, durationMs)
             .setAction(actionText, onClickListener)
             .setActionTextColor(
-                activity.getResources().getColor(R.color.dialer_snackbar_action_text_color));
+                activity.getResources().getColor(R.color.dialer_snackbar_action_text_color,
+                        activity.getTheme()));
     activeSnackbar.show();
     StorageComponent.get(activity)
         .unencryptedSharedPrefs()
@@ -115,9 +116,10 @@ public class PostCall {
         Snackbar.make(rootView, message, Snackbar.LENGTH_LONG)
             .setAction(addMessage, onClickListener)
             .setActionTextColor(
-                activity.getResources().getColor(R.color.dialer_snackbar_action_text_color))
+                activity.getResources().getColor(R.color.dialer_snackbar_action_text_color,
+                        activity.getTheme()))
             .addCallback(
-                new BaseCallback<Snackbar>() {
+                new BaseTransientBottomBar.BaseCallback<Snackbar>() {
                   @Override
                   public void onDismissed(Snackbar snackbar, int i) {
                     super.onDismissed(snackbar, i);
