@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +22,15 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v4.app.DialogFragment;
-import android.support.v7.app.AlertDialog;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.TextView;
-import com.android.dialer.blocking.FilteredNumberCompat;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.DialogFragment;
+
+import com.android.dialer.R;
 
 /** Creates dialog fragments to block a number and/or report it as spam/not spam. */
 public final class BlockReportSpamDialogs {
@@ -58,13 +61,7 @@ public final class BlockReportSpamDialogs {
   }
 
   private static String getBlockMessage(Context context) {
-    String message;
-    if (FilteredNumberCompat.useNewFiltering(context)) {
-      message = context.getString(R.string.block_number_confirmation_message_new_filtering);
-    } else {
-      message = context.getString(R.string.block_report_number_alert_details);
-    }
-    return message;
+      return context.getString(R.string.block_number_confirmation_message_new_filtering);
   }
 
   /**
@@ -98,7 +95,8 @@ public final class BlockReportSpamDialogs {
     protected OnConfirmListener positiveListener;
 
     /** Listener for when the dialog is dismissed. */
-    @Nullable protected DialogInterface.OnDismissListener dismissListener;
+    @Nullable
+    protected DialogInterface.OnDismissListener dismissListener;
 
     @Override
     public void onDismiss(DialogInterface dialog) {
@@ -187,11 +185,8 @@ public final class BlockReportSpamDialogs {
   public static class DialogFragmentForBlockingNumberAndReportingAsSpam
       extends CommonDialogsFragment {
 
-    private boolean isSpamEnabled;
-
     public static DialogFragment newInstance(
         String displayNumber,
-        boolean isSpamEnabled,
         OnConfirmListener positiveListener,
         @Nullable DialogInterface.OnDismissListener dismissListener) {
       DialogFragmentForBlockingNumberAndReportingAsSpam fragment =
@@ -199,7 +194,6 @@ public final class BlockReportSpamDialogs {
       fragment.displayNumber = displayNumber;
       fragment.positiveListener = positiveListener;
       fragment.dismissListener = dismissListener;
-      fragment.isSpamEnabled = isSpamEnabled;
       return fragment;
     }
 
@@ -211,11 +205,7 @@ public final class BlockReportSpamDialogs {
       Dialog dialog =
           alertDialogBuilder
               .setTitle(getString(R.string.block_number_confirmation_title, displayNumber))
-              .setMessage(
-                  isSpamEnabled
-                      ? getString(
-                          R.string.block_number_alert_details, getBlockMessage(getContext()))
-                      : getString(R.string.block_report_number_alert_details))
+              .setMessage(getString(R.string.block_report_number_alert_details))
               .setPositiveButton(
                   R.string.block_number_ok, createGenericOnClickListener(this, positiveListener))
               .create();

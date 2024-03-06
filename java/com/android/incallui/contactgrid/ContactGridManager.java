@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2023 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +21,6 @@ import android.content.Context;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
-import android.support.annotation.Nullable;
-import android.support.v4.view.ViewCompat;
 import android.telephony.PhoneNumberUtils;
 import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
@@ -33,17 +32,20 @@ import android.widget.ImageView;
 import android.widget.Space;
 import android.widget.TextView;
 import android.widget.ViewAnimator;
+
+import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+
+import com.android.dialer.R;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
-import com.android.dialer.configprovider.ConfigProviderComponent;
 import com.android.dialer.glidephotomanager.GlidePhotoManagerComponent;
 import com.android.dialer.glidephotomanager.PhotoInfo;
-import com.android.dialer.lettertile.LetterTileDrawable;
-import com.android.dialer.util.DrawableConverter;
 import com.android.dialer.widget.BidiTextView;
 import com.android.incallui.incall.protocol.ContactPhotoType;
 import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
+
 import java.util.List;
 
 /** Utility to manage the Contact grid */
@@ -93,11 +95,10 @@ public class ContactGridManager {
 
   private PrimaryInfo primaryInfo = PrimaryInfo.empty();
   private PrimaryCallState primaryCallState = PrimaryCallState.empty();
-  private final LetterTileDrawable letterTile;
   private boolean isInMultiWindowMode;
 
-  public ContactGridManager(
-      View view, @Nullable ImageView avatarImageView, int avatarSize, boolean showAnonymousAvatar) {
+  public ContactGridManager(View view, @Nullable ImageView avatarImageView, int avatarSize,
+                            boolean showAnonymousAvatar) {
     context = view.getContext();
     Assert.isNotNull(context);
 
@@ -118,7 +119,6 @@ public class ContactGridManager {
     topRowSpace = view.findViewById(R.id.contactgrid_top_row_space);
 
     contactGridLayout = (View) contactNameTextView.getParent();
-    letterTile = new LetterTileDrawable(context.getResources());
     isTimerStarted = false;
 
     deviceNumberTextView = view.findViewById(R.id.contactgrid_device_number_text);
@@ -302,13 +302,7 @@ public class ContactGridManager {
       if (hideAvatar) {
         avatarImageView.setVisibility(View.GONE);
       } else if (avatarSize > 0 && updateAvatarVisibility()) {
-        if (ConfigProviderComponent.get(context)
-            .getConfigProvider()
-            .getBoolean("enable_glide_photo", false)) {
-          loadPhotoWithGlide();
-        } else {
-          loadPhotoWithLegacy();
-        }
+        loadPhotoWithGlide();
       }
     }
   }
@@ -345,33 +339,6 @@ public class ContactGridManager {
         .loadContactPhoto(avatarImageView, photoInfoBuilder.build());
   }
 
-  private void loadPhotoWithLegacy() {
-    boolean hasPhoto =
-        primaryInfo.photo() != null && primaryInfo.photoType() == ContactPhotoType.CONTACT;
-    if (hasPhoto) {
-      avatarImageView.setBackground(
-          DrawableConverter.getRoundedDrawable(
-              context, primaryInfo.photo(), avatarSize, avatarSize));
-    } else {
-      // Contact has a photo, don't render a letter tile.
-      letterTile.setCanonicalDialerLetterTileDetails(
-          primaryInfo.name(),
-          primaryInfo.contactInfoLookupKey(),
-          LetterTileDrawable.SHAPE_CIRCLE,
-          LetterTileDrawable.getContactTypeFromPrimitives(
-              primaryCallState.isVoiceMailNumber(),
-              primaryInfo.isSpam(),
-              primaryCallState.isBusinessNumber(),
-              primaryInfo.numberPresentation(),
-              primaryCallState.isConference()));
-      // By invalidating the avatarImageView we force a redraw of the letter tile.
-      // This is required to properly display the updated letter tile iconography based on the
-      // contact type, because the background drawable reference cached in the view, and the
-      // view is not aware of the mutations made to the background.
-      avatarImageView.invalidate();
-      avatarImageView.setBackground(letterTile);
-    }
-  }
   /**
    * Updates row 2. For example:
    *
@@ -467,8 +434,5 @@ public class ContactGridManager {
             BidiFormatter.getInstance()
                 .unicodeWrap(primaryCallState.callbackNumber(), TextDirectionHeuristics.LTR)));
     deviceNumberTextView.setVisibility(View.VISIBLE);
-    if (primaryInfo.shouldShowLocation()) {
-      deviceNumberDivider.setVisibility(View.VISIBLE);
-    }
   }
 }

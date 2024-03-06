@@ -16,20 +16,20 @@
 
 package com.android.dialer.app.calllog;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.os.Build.VERSION_CODES;
 import android.os.PersistableBundle;
-import android.support.annotation.NonNull;
-import android.support.v4.os.BuildCompat;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+
+import androidx.annotation.NonNull;
+
 import com.android.dialer.app.R;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
@@ -41,7 +41,6 @@ import com.android.dialer.telecom.TelecomUtil;
 import com.android.dialer.theme.base.ThemeComponent;
 
 /** Shows a notification in the status bar for legacy vociemail. */
-@TargetApi(VERSION_CODES.O)
 public final class LegacyVoicemailNotifier {
   private static final String NOTIFICATION_TAG_PREFIX = "LegacyVoicemail_";
   private static final String NOTIFICATION_TAG = "LegacyVoicemail";
@@ -62,7 +61,6 @@ public final class LegacyVoicemailNotifier {
       boolean isRefresh) {
     LogUtil.enterBlock("LegacyVoicemailNotifier.showNotification");
     Assert.isNotNull(handle);
-    Assert.checkArgument(BuildCompat.isAtLeastO());
 
     TelephonyManager pinnedTelephonyManager =
         context.getSystemService(TelephonyManager.class).createForPhoneAccountHandle(handle);
@@ -99,6 +97,7 @@ public final class LegacyVoicemailNotifier {
         context
             .getResources()
             .getQuantityString(R.plurals.notification_voicemail_title, count, count);
+    @SuppressLint("MissingPermission")
     PersistableBundle config = pinnedTelephonyManager.getCarrierConfig();
     boolean isOngoing;
     if (config == null) {
@@ -159,7 +158,6 @@ public final class LegacyVoicemailNotifier {
   public static void cancelNotification(
       @NonNull Context context, @NonNull PhoneAccountHandle phoneAccountHandle) {
     LogUtil.enterBlock("LegacyVoicemailNotifier.cancelNotification");
-    Assert.checkArgument(BuildCompat.isAtLeastO());
     Assert.isNotNull(phoneAccountHandle);
     if ("null".equals(phoneAccountHandle.getId())) {
       // while PhoneAccountHandle itself will never be null, telephony may still construct a "null"
@@ -178,7 +176,7 @@ public final class LegacyVoicemailNotifier {
   @NonNull
   private static String getNotificationTag(
       @NonNull Context context, @NonNull PhoneAccountHandle phoneAccountHandle) {
-    if (context.getSystemService(TelephonyManager.class).getPhoneCount() <= 1) {
+    if (context.getSystemService(TelephonyManager.class).getActiveModemCount() <= 1) {
       return NOTIFICATION_TAG;
     }
 

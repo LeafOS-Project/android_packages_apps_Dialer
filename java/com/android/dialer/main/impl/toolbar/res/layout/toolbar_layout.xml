@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright (C) 2018 The Android Open Source Project
+<!--
+     Copyright (C) 2018 The Android Open Source Project
+     Copyright (C) 2023 The LineageOS Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -18,7 +20,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="@dimen/expanded_search_bar_height"
-    android:background="?android:attr/colorPrimary"
     app:contentInsetEnd="0dp"
     app:contentInsetStart="0dp">
   <FrameLayout
@@ -30,7 +31,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/search_bar_margin"
         android:background="@drawable/search_bar_background_rounded_corners"
-        android:elevation="4dp"
+        android:elevation="0dp"
         android:minHeight="@dimen/collapsed_search_bar_height">
 
       <RelativeLayout
@@ -38,7 +39,6 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_gravity="center_vertical"
-          android:background="?android:attr/selectableItemBackground"
           android:gravity="center_vertical">
 
         <ImageView
@@ -50,7 +50,7 @@
             android:importantForAccessibility="no"
             android:scaleType="center"
             android:src="@drawable/quantum_ic_search_vd_theme_24"
-            android:tint="?colorIcon"/>
+            app:tint="@color/searchbar_icon_color" />
 
         <TextView
             android:id="@+id/search_box_start_search"
@@ -61,7 +61,7 @@
             android:layout_toEndOf="@+id/search_magnifying_glass"
             android:layout_toStartOf="@+id/voice_search_button"
             android:text="@string/dialer_hint_find_contact"
-            android:textSize="16dp"
+            android:textSize="16sp"
             style="@style/Dialer.TextAppearance.Secondary"/>
 
         <ImageView
@@ -73,7 +73,7 @@
             android:contentDescription="@string/description_start_voice_search"
             android:scaleType="center"
             android:src="@drawable/quantum_ic_mic_vd_theme_24"
-            android:tint="?colorIcon"/>
+            app:tint="@color/searchbar_icon_color" />
 
         <ImageButton
             android:id="@+id/main_options_menu_button"
@@ -84,7 +84,7 @@
             android:contentDescription="@string/action_menu_overflow_description"
             android:scaleType="center"
             android:src="@drawable/quantum_ic_more_vert_vd_theme_24"
-            android:tint="?colorIcon"/>
+            app:tint="@color/searchbar_icon_color" />
       </RelativeLayout>
 
       <include layout="@layout/expanded_search_bar"/>
@@ -121,7 +121,7 @@
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             android:src="@drawable/quantum_ic_close_vd_theme_24"
-            android:tint="?colorIconOnUnthemedDarkBackground"/>
+            app:tint="?colorIconOnUnthemedDarkBackground" />
 
         <TextView
             android:id="@+id/remove_view_text"
